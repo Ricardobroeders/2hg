@@ -293,6 +293,8 @@ export async function listTeamsByOwner(ownerId: string): Promise<
     viewCount: number;
     updatedAt: Date;
     cardCount: number;
+    /** Commander names per slot, so the account page can show their art. */
+    commanders: string[];
   }[]
 > {
   const db = getDb();
@@ -304,6 +306,13 @@ export async function listTeamsByOwner(ownerId: string): Promise<
       kind: teams.kind,
       viewCount: teams.viewCount,
       updatedAt: teams.updatedAt,
+      commanders: sql<string[]>`
+        coalesce((
+          select array_agg(c order by c)
+          from ${decks} d2, unnest(d2.commanders) AS c
+          where d2.team_id = ${teams.id}
+        ), ARRAY[]::text[])
+      `,
       cardCount: sql<number>`
         coalesce((
           select sum(${deckCards.quantity})

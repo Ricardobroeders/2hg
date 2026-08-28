@@ -5,6 +5,7 @@ import { useTeam } from "@/lib/team-store";
 import { FORMATS, type DeckSlot } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
+import { CommanderPicker } from "./CommanderPicker";
 import { QuickAdd } from "./QuickAdd";
 import { SaveDeck } from "./SaveDeck";
 
@@ -52,6 +53,12 @@ export function DeckColumn({ slot }: { slot: DeckSlot }) {
             {count}/{rules.minDeckSize}
           </span>
         </div>
+        {/* Commander sits above the card search: it defines the deck's colour
+            identity, so it's the first decision, not another card added. */}
+        <div className="mt-3">
+          <CommanderPicker slot={slot} />
+        </div>
+
         <div className="mt-3">
           <QuickAdd slot={slot} />
         </div>

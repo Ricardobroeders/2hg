@@ -181,6 +181,11 @@ type TeamContextValue = {
   setQuantity: (name: string, slot: DeckSlot, quantity: number) => void;
   removeCard: (name: string, slot: DeckSlot) => void;
   renameDeck: (slot: DeckSlot, name: string) => void;
+  /**
+   * Set (or clear, with null) a deck's commander. Renames the deck to match
+   * unless the name has been edited by hand — see the implementation.
+   */
+  setCommander: (slot: DeckSlot, card: ScryfallCard | null) => void;
   /** Drop a parsed decklist into a slot. See /import. */
   importDeck: (slot: DeckSlot, deck: ImportedDeck, mode?: ImportMode) => void;
   /** Replace the whole pairing — used when adopting a shared link. */
@@ -350,6 +355,46 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     updateTeam((t) => ({ ...t, [slot]: { ...t[slot], name } }));
   }, []);
 
+  const setCommander = useCallback(
+    (slot: DeckSlot, card: ScryfallCard | null) => {
+      update((s) => {
+        const deck = s.team[slot];
+
+        /**
+         * The deck name follows the commander, but only while the user hasn't
+         * claimed it. "Deck A" and the previous commander's name both count as
+         * unclaimed; anything else is a deliberate choice we must not clobber.
+         */
+        const untouched =
+          !deck.name.trim() ||
+          deck.name === `Deck ${slot.toUpperCase()}` ||
+          deck.commanders.includes(deck.name);
+
+        const name =
+          card && untouched
+            ? card.name
+            : !card && deck.commanders.includes(deck.name)
+              ? `Deck ${slot.toUpperCase()}`
+              : deck.name;
+
+        return {
+          ...s,
+          // Cache the card so its image renders without another round trip.
+          cards: card ? { ...s.cards, [card.name]: card } : s.cards,
+          team: {
+            ...s.team,
+            [slot]: {
+              ...deck,
+              name,
+              commanders: card ? [card.name] : [],
+            },
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const replaceTeam = useCallback(
     (next: TeamPairing, incoming: ScryfallCard[]) => {
       update((s) => {
@@ -398,6 +443,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      setCommander,
       importDeck,
       replaceTeam,
       share: snap.share,
@@ -416,6 +462,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      setCommander,
       importDeck,
       replaceTeam,
       setShare,

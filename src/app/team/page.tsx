@@ -4,6 +4,7 @@ import { useTeam } from "@/lib/team-store";
 import { DeckColumn } from "@/components/DeckColumn";
 import { LegalityPanel } from "@/components/LegalityPanel";
 import { TeamActions } from "@/components/TeamActions";
+import { TeamCommanders } from "@/components/TeamCommanders";
 import { scoreCard } from "@/lib/twohg-score";
 
 export default function TeamPage() {
@@ -49,7 +50,12 @@ export default function TeamPage() {
       {!hydrated ? (
         <p className="py-24 text-center text-sm text-zinc-600">Loading your team…</p>
       ) : (
-        <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,320px)]">
+        <>
+        <div className="mt-8">
+          <TeamCommanders />
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,320px)]">
           <DeckColumn slot="a" />
           <DeckColumn slot="b" />
 
@@ -63,6 +69,7 @@ export default function TeamPage() {
             </p>
           </aside>
         </div>
+        </>
       )}
     </div>
   );

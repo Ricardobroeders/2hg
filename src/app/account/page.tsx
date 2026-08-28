@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/server";
 import { signOut } from "@/app/auth/sign-in/actions";
 import { isDatabaseConfigured } from "@/lib/db";
 import { listTeamsByOwner } from "@/lib/db/teams";
+import { cardImage, getCardsByNames } from "@/lib/scryfall";
 import { FORMATS } from "@/lib/team";
 
 export const metadata: Metadata = {
@@ -27,6 +28,18 @@ export default async function AccountPage() {
   const pairings = isDatabaseConfigured()
     ? await listTeamsByOwner(user.id).catch(() => [])
     : [];
+
+  // One Scryfall round trip for every commander on the page, rather than one
+  // per row. Failure is non-fatal — the list still renders without art.
+  const commanderNames = [...new Set(pairings.flatMap((p) => p.commanders))];
+  const art = new Map<string, string>();
+  if (commanderNames.length) {
+    const cards = await getCardsByNames(commanderNames).catch(() => []);
+    for (const c of cards) {
+      const url = cardImage(c, "art_crop");
+      if (url) art.set(c.name, url);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
@@ -98,6 +111,33 @@ export default async function AccountPage() {
                   href={p.kind === "solo" ? `/d/${p.slug}` : `/t/${p.slug}`}
                   className="flex items-center gap-4 px-5 py-4 transition hover:bg-white/5"
                 >
+                  {/* A pairing is recognised by its commanders long before
+                      its name, so they lead the row. */}
+                  {p.commanders.length > 0 && (
+                    <span className="flex shrink-0 -space-x-2">
+                      {p.commanders.slice(0, 2).map((name) =>
+                        art.has(name) ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            key={name}
+                            src={art.get(name)}
+                            alt={name}
+                            title={name}
+                            className="h-9 w-9 rounded-full object-cover ring-2 ring-zinc-950"
+                          />
+                        ) : (
+                          <span
+                            key={name}
+                            title={name}
+                            className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-[10px] text-zinc-500 ring-2 ring-zinc-950"
+                          >
+                            {name.slice(0, 1)}
+                          </span>
+                        ),
+                      )}
+                    </span>
+                  )}
+
                   <div className="min-w-0 flex-1">
                     <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
                       <span className="truncate">{p.name}</span>
