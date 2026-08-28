@@ -36,6 +36,14 @@ import {
 
 const STORAGE_KEY = "2hg:team:v1";
 const CARD_CACHE_KEY = "2hg:cards:v1";
+const SHARE_KEY = "2hg:share:v1";
+
+/**
+ * A pairing we've saved to the server. `editToken` is the anonymous creator's
+ * proof of ownership — it lives only in this browser, so losing it means
+ * losing the ability to update that share link.
+ */
+export type SharedRef = { slug: string; editToken: string };
 
 type Snapshot = {
   team: TeamPairing;
@@ -43,6 +51,8 @@ type Snapshot = {
   cards: Record<string, ScryfallCard>;
   /** Names Scryfall couldn't resolve, so we stop asking for them. */
   unresolved: string[];
+  /** Set once this pairing has been shared. */
+  share: SharedRef | null;
 };
 
 /** Stable identity: the server renders an empty team, always. */
@@ -50,6 +60,7 @@ const SERVER_SNAPSHOT: Snapshot = {
   team: emptyTeam(),
   cards: {},
   unresolved: [],
+  share: null,
 };
 
 let snapshot: Snapshot | null = null;
@@ -81,7 +92,12 @@ function normalizeTeam(raw: Partial<TeamPairing> | null): TeamPairing {
 }
 
 function readStorage(): Snapshot {
-  const next: Snapshot = { team: emptyTeam(), cards: {}, unresolved: [] };
+  const next: Snapshot = {
+    team: emptyTeam(),
+    cards: {},
+    unresolved: [],
+    share: null,
+  };
   try {
     const rawTeam = localStorage.getItem(STORAGE_KEY);
     if (rawTeam) {
@@ -94,6 +110,9 @@ function readStorage(): Snapshot {
         next.cards[card.name] = card;
       }
     }
+
+    const rawShare = localStorage.getItem(SHARE_KEY);
+    if (rawShare) next.share = JSON.parse(rawShare) as SharedRef;
   } catch {
     // Corrupt or unavailable storage just means we start empty.
   }
@@ -104,6 +123,8 @@ function persist(s: Snapshot) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(s.team));
     localStorage.setItem(CARD_CACHE_KEY, JSON.stringify(Object.values(s.cards)));
+    if (s.share) localStorage.setItem(SHARE_KEY, JSON.stringify(s.share));
+    else localStorage.removeItem(SHARE_KEY);
   } catch {
     // Private browsing / quota — the session still works, it just won't persist.
   }
@@ -162,6 +183,11 @@ type TeamContextValue = {
   renameDeck: (slot: DeckSlot, name: string) => void;
   /** Drop a parsed decklist into a slot. See /import. */
   importDeck: (slot: DeckSlot, deck: ImportedDeck, mode?: ImportMode) => void;
+  /** Replace the whole pairing — used when adopting a shared link. */
+  replaceTeam: (team: TeamPairing, cards: ScryfallCard[]) => void;
+  /** The saved share link for this pairing, if it has one. */
+  share: SharedRef | null;
+  setShare: (share: SharedRef | null) => void;
   setFormat: (format: FormatId) => void;
   setTeamName: (name: string) => void;
   clear: () => void;
@@ -324,6 +350,28 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     updateTeam((t) => ({ ...t, [slot]: { ...t[slot], name } }));
   }, []);
 
+  const replaceTeam = useCallback(
+    (next: TeamPairing, incoming: ScryfallCard[]) => {
+      update((s) => {
+        const nextCards = { ...s.cards };
+        for (const card of incoming) nextCards[card.name] = card;
+        return {
+          ...s,
+          team: next,
+          cards: nextCards,
+          unresolved: s.unresolved.filter((n) => !(n in nextCards)),
+          // Adopting someone else's pairing gives you a copy, not their link.
+          share: null,
+        };
+      });
+    },
+    [],
+  );
+
+  const setShare = useCallback((share: SharedRef | null) => {
+    update((s) => ({ ...s, share }));
+  }, []);
+
   const setFormat = useCallback((format: FormatId) => {
     updateTeam((t) => ({ ...t, format }));
   }, []);
@@ -332,7 +380,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     updateTeam((t) => ({ ...t, name }));
   }, []);
 
-  const clear = useCallback(() => updateTeam(() => emptyTeam()), []);
+  const clear = useCallback(
+    () => update((s) => ({ ...s, team: emptyTeam(), share: null })),
+    [],
+  );
 
   const validation = useMemo(() => validateTeam(team, cards), [team, cards]);
 
@@ -348,6 +399,9 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       removeCard,
       renameDeck,
       importDeck,
+      replaceTeam,
+      share: snap.share,
+      setShare,
       setFormat,
       setTeamName,
       clear,
@@ -363,6 +417,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       removeCard,
       renameDeck,
       importDeck,
+      replaceTeam,
+      setShare,
       setFormat,
       setTeamName,
       clear,

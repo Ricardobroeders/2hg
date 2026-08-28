@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTeam } from "@/lib/team-store";
 import { FORMATS, teamAsDecklist, type FormatId } from "@/lib/team";
 import { massEntryLink, teamPrice } from "@/lib/affiliates";
+import { ShareTeam } from "./ShareTeam";
 
 /**
  * Format switch, export, and the primary monetization surface: one action that
@@ -75,6 +76,8 @@ export function TeamActions() {
           Cart both decks →
         </a>
       </div>
+
+      <ShareTeam />
 
       <div className="flex gap-2">
         <button
