@@ -6,6 +6,7 @@ import { FORMATS, type DeckSlot } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
 import { QuickAdd } from "./QuickAdd";
+import { SaveDeck } from "./SaveDeck";
 
 export function DeckColumn({ slot }: { slot: DeckSlot }) {
   const { team, cards, validation, setQuantity, removeCard, renameDeck } = useTeam();
@@ -143,6 +144,8 @@ export function DeckColumn({ slot }: { slot: DeckSlot }) {
           </ul>
         )}
       </div>
+
+      <SaveDeck slot={slot} />
     </section>
   );
 }

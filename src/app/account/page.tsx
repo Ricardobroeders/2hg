@@ -68,7 +68,7 @@ export default async function AccountPage() {
       <section className="mt-10">
         <div className="flex items-baseline justify-between gap-4">
           <h2 className="text-sm font-semibold tracking-tight text-white">
-            Your pairings
+            Your decks and pairings
           </h2>
           <span className="text-xs tabular-nums text-zinc-500">
             {pairings.length}
@@ -77,12 +77,11 @@ export default async function AccountPage() {
 
         {pairings.length === 0 ? (
           <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-8 text-center">
-            <p className="text-sm text-zinc-400">
-              No saved pairings yet.
-            </p>
+            <p className="text-sm text-zinc-400">Nothing saved yet.</p>
             <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-zinc-500">
-              Build a team and hit share — it saves to your account
-              automatically while you&apos;re signed in.
+              Save a pairing to share both decks with a teammate, or save a
+              single deck on its own. Either way it lands here automatically
+              while you&apos;re signed in.
             </p>
             <Link
               href="/team"
@@ -96,12 +95,21 @@ export default async function AccountPage() {
             {pairings.map((p) => (
               <li key={p.slug}>
                 <Link
-                  href={`/t/${p.slug}`}
+                  href={p.kind === "solo" ? `/d/${p.slug}` : `/t/${p.slug}`}
                   className="flex items-center gap-4 px-5 py-4 transition hover:bg-white/5"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">
-                      {p.name}
+                    <p className="flex items-center gap-2 truncate text-sm font-medium text-white">
+                      <span className="truncate">{p.name}</span>
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                          p.kind === "solo"
+                            ? "bg-sky-400/15 text-sky-300"
+                            : "bg-emerald-400/15 text-emerald-300"
+                        }`}
+                      >
+                        {p.kind === "solo" ? "Deck" : "Pairing"}
+                      </span>
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-500">
                       {FORMATS[p.format].label}

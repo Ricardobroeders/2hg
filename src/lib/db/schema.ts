@@ -31,6 +31,16 @@ import {
 export const formatEnum = pgEnum("format", ["commander", "constructed"]);
 export const deckSlotEnum = pgEnum("deck_slot", ["a", "b"]);
 
+/**
+ * A saved entry is either a pairing (two decks, the product's core entity) or
+ * a solo deck (one deck, slot "a").
+ *
+ * Solo decks are not a lesser case — they're the input to the thing we
+ * eventually want to be known for: "find me a partner for this deck". A deck
+ * has to be savable on its own before it can be matched against anything.
+ */
+export const entryKindEnum = pgEnum("entry_kind", ["pairing", "solo"]);
+
 export const teams = pgTable(
   "teams",
   {
@@ -39,6 +49,11 @@ export const teams = pgTable(
     slug: text("slug").notNull(),
     name: text("name").notNull(),
     format: formatEnum("format").notNull().default("commander"),
+    /**
+     * Existing rows are all pairings, so the default keeps this migration
+     * non-breaking. A "solo" row has exactly one deck, in slot "a".
+     */
+    kind: entryKindEnum("kind").notNull().default("pairing"),
     /**
      * Null while the pairing is anonymous. Holds a Neon Managed Better Auth
      * user id — `neon_auth."user".id`, which is a **uuid** while this column

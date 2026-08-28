@@ -13,7 +13,7 @@ const API = "https://api.scryfall.com";
 /** Scryfall asks for a descriptive UA and an explicit Accept header. */
 const HEADERS = {
   Accept: "application/json",
-  "User-Agent": "TwoHeadedGiant/0.1 (https://2hg.gg)",
+  "User-Agent": "TwoHeadedGiant/0.1 (https://2hg.dev)",
 };
 
 const DAY = 60 * 60 * 24;
@@ -216,6 +216,24 @@ export async function getCardsByNames(
   );
 
   return results.flat();
+}
+
+/**
+ * Whether a card can head a Commander deck.
+ *
+ * Moxfield's plain-text export carries no *CMDR* marker, so a pasted 100-card
+ * list arrives with no commander at all unless we work it out from the cards
+ * themselves — and in a Commander-first product a deck with no commander is
+ * the wrong answer.
+ */
+export function canBeCommander(card: ScryfallCard): boolean {
+  // Planeswalkers and a handful of oddities say so in their own text.
+  if (oracleText(card).toLowerCase().includes("can be your commander")) {
+    return true;
+  }
+  // type_line joins both faces on a DFC, so this covers transforming legends.
+  const type = card.type_line.toLowerCase();
+  return type.includes("legendary") && type.includes("creature");
 }
 
 /** The image for a card, transparently handling double-faced layouts. */

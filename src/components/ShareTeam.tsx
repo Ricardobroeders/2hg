@@ -120,8 +120,9 @@ export function ShareTeam() {
 
       {share && (
         <p className="mt-2 text-[11px] leading-relaxed text-zinc-600">
-          Only this browser can edit that link — we don&apos;t have accounts
-          yet, so don&apos;t clear your site data if you want to keep editing it.
+          Signed out, only this browser can edit that link — don&apos;t clear
+          your site data if you want to keep editing it. Sign in and you can
+          claim it to your account instead.
         </p>
       )}
     </div>

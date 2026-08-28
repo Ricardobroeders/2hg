@@ -35,6 +35,7 @@ export async function GET(
   // can view a pairing, only its creator can change it.
   return NextResponse.json({
     team: stored.team,
+    kind: stored.kind,
     slug: stored.slug,
     viewCount: stored.viewCount,
     createdAt: stored.createdAt,

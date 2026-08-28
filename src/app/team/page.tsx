@@ -56,8 +56,7 @@ export default function TeamPage() {
             <TeamActions />
 
             <p className="text-xs leading-relaxed text-zinc-600">
-              This pairing lives in your browser. Accounts and shareable team
-              URLs land when the database goes live —{" "}
+              This pairing lives in your browser until you save it —{" "}
               {validation.counts.combined} cards are saved locally right now.
             </p>
           </aside>

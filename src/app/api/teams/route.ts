@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { currentUserId } from "@/lib/auth/server";
 import { DatabaseNotConfiguredError } from "@/lib/db";
-import { createTeam, TeamTooLargeError } from "@/lib/db/teams";
+import {
+  createTeam,
+  TeamTooLargeError,
+  type EntryKind,
+} from "@/lib/db/teams";
 import type { TeamPairing } from "@/lib/team";
 
 /**
@@ -14,6 +18,7 @@ import type { TeamPairing } from "@/lib/team";
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     team?: TeamPairing;
+    kind?: string;
   } | null;
 
   const team = body?.team;
@@ -21,11 +26,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "team required" }, { status: 400 });
   }
 
+  const kind: EntryKind = body?.kind === "solo" ? "solo" : "pairing";
+
+  // A solo entry only ever stores deck "a", so only deck "a" needs cards.
   const cardCount =
-    (team.a.entries?.length ?? 0) + (team.b.entries?.length ?? 0);
+    kind === "solo"
+      ? (team.a.entries?.length ?? 0)
+      : (team.a.entries?.length ?? 0) + (team.b.entries?.length ?? 0);
+
   if (cardCount === 0) {
     return NextResponse.json(
-      { error: "Add some cards before sharing." },
+      {
+        error:
+          kind === "solo"
+            ? "Add some cards to this deck before saving it."
+            : "Add some cards before sharing.",
+      },
       { status: 400 },
     );
   }
@@ -35,8 +51,8 @@ export async function POST(request: Request) {
     // ownerId stays null and the edit token is the only claim on it — the
     // anonymous path is never degraded to push people toward an account.
     const ownerId = await currentUserId();
-    const { slug, editToken } = await createTeam(team, ownerId);
-    return NextResponse.json({ slug, editToken }, { status: 201 });
+    const { slug, editToken } = await createTeam(team, ownerId, kind);
+    return NextResponse.json({ slug, editToken, kind }, { status: 201 });
   } catch (error) {
     if (error instanceof DatabaseNotConfiguredError) {
       return NextResponse.json(

@@ -19,8 +19,12 @@ import {
   type TeamPairing,
 } from "../team";
 
+export type EntryKind = "pairing" | "solo";
+
 export type StoredTeam = {
   team: TeamPairing;
+  /** "solo" rows carry a single deck in slot "a"; deck "b" is empty. */
+  kind: EntryKind;
   slug: string;
   ownerId: string | null;
   viewCount: number;
@@ -47,10 +51,18 @@ const MAX_CARD_ROWS = 600;
 
 export class TeamTooLargeError extends Error {}
 
-function cardRowsFor(team: TeamPairing, deckIds: Record<DeckSlot, string>) {
+function defaultName(kind: EntryKind): string {
+  return kind === "solo" ? "Untitled deck" : "Untitled team";
+}
+
+function cardRowsFor(
+  team: TeamPairing,
+  deckIds: Record<DeckSlot, string>,
+  slots: DeckSlot[] = ["a", "b"],
+) {
   const rows: { deckId: string; cardName: string; quantity: number }[] = [];
 
-  for (const slot of ["a", "b"] as const) {
+  for (const slot of slots) {
     // Collapse any duplicate names so the (deck_id, card_name) primary key
     // can't be violated by a malformed client payload.
     const merged = new Map<string, number>();
@@ -73,8 +85,9 @@ function deckRowsFor(
   team: TeamPairing,
   teamId: string,
   deckIds: Record<DeckSlot, string>,
+  slots: DeckSlot[] = ["a", "b"],
 ) {
-  return (["a", "b"] as const).map((slot) => ({
+  return slots.map((slot) => ({
     id: deckIds[slot],
     teamId,
     slot,
@@ -96,6 +109,7 @@ function normalizeFormat(format: unknown): FormatId {
 export async function createTeam(
   team: TeamPairing,
   ownerId: string | null = null,
+  kind: EntryKind = "pairing",
 ): Promise<{ slug: string; editToken: string }> {
   const db = getDb();
   const teamId = randomUUID();
@@ -106,18 +120,23 @@ export async function createTeam(
 
   const slug = shortId(10);
   const editToken = shortId(32);
-  const cards = cardRowsFor(team, deckIds);
+
+  // A solo entry stores one deck. Writing an empty slot "b" would make every
+  // read have to special-case a phantom deck, so we simply don't create it.
+  const slots: DeckSlot[] = kind === "solo" ? ["a"] : ["a", "b"];
+  const cards = cardRowsFor(team, deckIds, slots);
 
   const writes = [
     db.insert(teams).values({
       id: teamId,
       slug,
-      name: team.name.slice(0, 120) || "Untitled team",
+      name: team.name.slice(0, 120) || defaultName(kind),
       format: normalizeFormat(team.format),
+      kind,
       ownerId,
       editToken,
     }),
-    db.insert(decks).values(deckRowsFor(team, teamId, deckIds)),
+    db.insert(decks).values(deckRowsFor(team, teamId, deckIds, slots)),
   ] as const;
 
   await (cards.length
@@ -172,6 +191,7 @@ export async function getTeamBySlug(slug: string): Promise<StoredTeam | null> {
 
   return {
     team: pairing,
+    kind: row.kind,
     slug: row.slug,
     ownerId: row.ownerId,
     viewCount: row.viewCount,
@@ -205,7 +225,7 @@ export async function updateTeam(
 ): Promise<boolean> {
   const db = getDb();
   const [existing] = await db
-    .select({ id: teams.id })
+    .select({ id: teams.id, kind: teams.kind })
     .from(teams)
     .where(eq(teams.slug, slug))
     .limit(1);
@@ -216,20 +236,23 @@ export async function updateTeam(
     a: randomUUID(),
     b: randomUUID(),
   };
-  const cards = cardRowsFor(team, deckIds);
+  // Kind is fixed at creation: editing a solo deck must never silently grow it
+  // a second deck, and editing a pairing must never drop one.
+  const slots: DeckSlot[] = existing.kind === "solo" ? ["a"] : ["a", "b"];
+  const cards = cardRowsFor(team, deckIds, slots);
 
   const writes = [
     db
       .update(teams)
       .set({
-        name: team.name.slice(0, 120) || "Untitled team",
+        name: team.name.slice(0, 120) || defaultName(existing.kind),
         format: normalizeFormat(team.format),
         updatedAt: new Date(),
       })
       .where(eq(teams.id, existing.id)),
     // deck_cards cascade with their decks.
     db.delete(decks).where(eq(decks.teamId, existing.id)),
-    db.insert(decks).values(deckRowsFor(team, existing.id, deckIds)),
+    db.insert(decks).values(deckRowsFor(team, existing.id, deckIds, slots)),
   ] as const;
 
   await (cards.length
@@ -266,6 +289,7 @@ export async function listTeamsByOwner(ownerId: string): Promise<
     slug: string;
     name: string;
     format: FormatId;
+    kind: EntryKind;
     viewCount: number;
     updatedAt: Date;
     cardCount: number;
@@ -277,6 +301,7 @@ export async function listTeamsByOwner(ownerId: string): Promise<
       slug: teams.slug,
       name: teams.name,
       format: teams.format,
+      kind: teams.kind,
       viewCount: teams.viewCount,
       updatedAt: teams.updatedAt,
       cardCount: sql<number>`
