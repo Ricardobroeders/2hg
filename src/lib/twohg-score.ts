@@ -342,17 +342,22 @@ export function scoreCard(card: ScryfallCard): TwoHgScore {
   return { score, tier: tierFor(score), matched, summary };
 }
 
+/**
+ * Tier chips are solid and light-on-dark: they sit on top of card art, which is
+ * arbitrary and often bright, so a translucent tint is unreadable there. The
+ * hue carries the tier, the solid fill carries the legibility.
+ */
 export function tierColor(tier: Tier): string {
   switch (tier) {
     case "Format staple":
-      return "bg-amber-400/15 text-amber-300 ring-amber-400/30";
+      return "bg-amber-200 text-amber-950 ring-amber-900/20";
     case "Strong in 2HG":
-      return "bg-emerald-400/15 text-emerald-300 ring-emerald-400/30";
+      return "bg-emerald-200 text-emerald-950 ring-emerald-900/20";
     case "Playable":
-      return "bg-sky-400/15 text-sky-300 ring-sky-400/30";
+      return "bg-sky-200 text-sky-950 ring-sky-900/20";
     case "Situational":
-      return "bg-zinc-400/15 text-zinc-300 ring-zinc-400/30";
+      return "bg-zinc-200 text-zinc-900 ring-zinc-900/20";
     case "Weak in 2HG":
-      return "bg-rose-400/15 text-rose-300 ring-rose-400/30";
+      return "bg-rose-200 text-rose-950 ring-rose-900/20";
   }
 }

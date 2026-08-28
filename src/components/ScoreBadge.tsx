@@ -10,13 +10,13 @@ export function ScoreBadge({
   const lg = size === "lg";
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full ring-1 ring-inset ${tierColor(
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full shadow-sm shadow-black/40 ring-1 ring-inset ${tierColor(
         score.tier,
       )} ${lg ? "px-3 py-1.5 text-sm" : "px-2 py-0.5 text-xs"} font-medium`}
       title={score.summary}
     >
       <span className="tabular-nums font-semibold">{score.score}</span>
-      <span className="opacity-80">{score.tier}</span>
+      <span className="opacity-75">{score.tier}</span>
     </span>
   );
 }
