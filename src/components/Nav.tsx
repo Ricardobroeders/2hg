@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AccountLink } from "./AccountLink";
 import { CardSearch } from "./CardSearch";
 import { useTeam } from "@/lib/team-store";
 
@@ -52,6 +53,7 @@ export function Nav() {
               )}
             </Link>
           ))}
+          <AccountLink />
         </nav>
       </div>
 
