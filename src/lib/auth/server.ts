@@ -17,6 +17,19 @@ export const auth = createNeonAuth({
   baseUrl: process.env.NEON_AUTH_BASE_URL!,
   cookies: {
     secret: process.env.NEON_AUTH_COOKIE_SECRET!,
+    /**
+     * The SDK defaults to SameSite=Strict, which silently breaks OAuth.
+     *
+     * Signing in leaves our origin for Google and comes back via Neon's auth
+     * host, so the return is a top-level *cross-site* navigation. A Strict
+     * cookie is withheld on exactly that, so the state set when the handshake
+     * started never comes back and the exchange fails with `invalid_code`.
+     *
+     * Lax is the correct level, not a loosening: it still withholds the cookie
+     * on cross-site subrequests (the CSRF case Strict exists for) and only
+     * sends it on top-level navigations the user actually performed.
+     */
+    sameSite: "lax",
   },
 });
 
