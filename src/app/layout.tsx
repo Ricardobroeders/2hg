@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
@@ -40,8 +41,27 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               . Not affiliated with or endorsed by Wizards of the Coast.
             </p>
             <p className="mt-1">
-              Buy links are affiliate links. Prototype — decks are stored in
-              your browser only.
+              Buy links are affiliate links. Shared pairings are public to
+              anyone with the link.
+            </p>
+            {/* Linked from every page: Google's OAuth review checks that the
+                privacy policy is reachable from the page hosting sign-in. */}
+            <p className="mt-3 flex items-center justify-center gap-3">
+              <Link
+                href="/privacy"
+                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
+              >
+                Privacy
+              </Link>
+              <span aria-hidden="true" className="text-zinc-700">
+                ·
+              </span>
+              <Link
+                href="/terms"
+                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
+              >
+                Terms
+              </Link>
             </p>
           </footer>
         </TeamProvider>
