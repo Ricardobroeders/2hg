@@ -17,6 +17,10 @@ export default async function SignInPage({
   const raw = params.next;
   const next = typeof raw === "string" ? raw : "/account";
 
+  // Neon bounces failures back here with ?error=. Surfacing it beats leaving
+  // someone staring at an unchanged sign-in page wondering what happened.
+  const errorCode = typeof params.error === "string" ? params.error : null;
+
   return (
     <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-20 sm:px-6">
       <h1 className="text-2xl font-semibold tracking-tight text-white">
@@ -26,6 +30,17 @@ export default async function SignInPage({
         Keeps your pairings across devices and puts your name on the ones you
         share.
       </p>
+
+      {errorCode && (
+        <p
+          role="alert"
+          className="mt-6 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm leading-relaxed text-red-300"
+        >
+          {errorCode === "invalid_code"
+            ? "That sign-in link expired or was already used. Try again."
+            : "Google sign-in didn't complete. Try again."}
+        </p>
+      )}
 
       <SignInForm next={next} />
 

@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { signInWithGoogle } from "./actions";
+import { useState } from "react";
+import { authClient } from "@/lib/auth/client";
 
 /** Google's mark. Inlined because the CSP-safe path is not hotlinking it. */
 function GoogleMark() {
@@ -27,33 +27,69 @@ function GoogleMark() {
   );
 }
 
+/**
+ * Google sign-in, started from the browser rather than a server action.
+ *
+ * This matters and is not a style choice. The OAuth handshake stores a
+ * short-lived `session_challenge` cookie that has to be on the *browser*
+ * before it leaves for Google, and has to come back with it. Starting the
+ * flow from the client means that cookie is set by a response the browser
+ * receives directly, through our own /api/auth proxy. Every Neon OAuth
+ * example does it this way.
+ */
 export function SignInForm({ next }: { next: string }) {
-  const [state, formAction, isPending] = useActionState(
-    signInWithGoogle,
-    null,
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function signIn() {
+    setPending(true);
+    setError(null);
+
+    try {
+      // Absolute URL: Neon matches this against its trusted-origins allowlist,
+      // and a relative path leaves the origin for it to infer.
+      const callbackURL = new URL(next, window.location.origin).toString();
+
+      const { error: err } = await authClient.signIn.social({
+        provider: "google",
+        callbackURL,
+        errorCallbackURL: new URL(
+          "/auth/sign-in",
+          window.location.origin,
+        ).toString(),
+      });
+
+      // Reaching here without a thrown redirect means it refused to start.
+      if (err) {
+        setError(err.message ?? "Couldn't start Google sign-in.");
+        setPending(false);
+      }
+    } catch {
+      setError("Couldn't reach the sign-in service. Try again in a moment.");
+      setPending(false);
+    }
+  }
 
   return (
-    <form action={formAction} className="mt-8">
-      <input type="hidden" name="next" value={next} />
-
+    <div className="mt-8">
       <button
-        type="submit"
-        disabled={isPending}
+        type="button"
+        onClick={signIn}
+        disabled={pending}
         className="flex w-full items-center justify-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
       >
         <GoogleMark />
-        {isPending ? "Redirecting to Google…" : "Continue with Google"}
+        {pending ? "Redirecting to Google…" : "Continue with Google"}
       </button>
 
-      {state?.error && (
+      {error && (
         <p
           role="alert"
           className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300"
         >
-          {state.error}
+          {error}
         </p>
       )}
-    </form>
+    </div>
   );
 }
