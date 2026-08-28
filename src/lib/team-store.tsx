@@ -22,8 +22,12 @@ import {
 } from "react";
 import type { ScryfallCard } from "./scryfall";
 import {
+  DEFAULT_FORMAT,
+  FORMATS,
   emptyTeam,
   validateTeam,
+  type Deck,
+  type DeckEntry,
   type DeckSlot,
   type FormatId,
   type TeamPairing,
@@ -51,11 +55,38 @@ const SERVER_SNAPSHOT: Snapshot = {
 let snapshot: Snapshot | null = null;
 const listeners = new Set<() => void>();
 
+/**
+ * Saved teams can predate the current shape — deck commanders, and the format
+ * set that no longer contains what they picked. Repair rather than discard;
+ * losing someone's deck is much worse than an odd default.
+ */
+function normalizeTeam(raw: Partial<TeamPairing> | null): TeamPairing {
+  const base = emptyTeam();
+  if (!raw) return base;
+
+  const deck = (d: Partial<Deck> | undefined, fallback: string): Deck => ({
+    name: typeof d?.name === "string" ? d.name : fallback,
+    entries: Array.isArray(d?.entries) ? d.entries : [],
+    commanders: Array.isArray(d?.commanders) ? d.commanders : [],
+  });
+
+  return {
+    ...base,
+    ...raw,
+    format:
+      raw.format && raw.format in FORMATS ? raw.format : DEFAULT_FORMAT,
+    a: deck(raw.a, "Deck A"),
+    b: deck(raw.b, "Deck B"),
+  };
+}
+
 function readStorage(): Snapshot {
   const next: Snapshot = { team: emptyTeam(), cards: {}, unresolved: [] };
   try {
     const rawTeam = localStorage.getItem(STORAGE_KEY);
-    if (rawTeam) next.team = JSON.parse(rawTeam) as TeamPairing;
+    if (rawTeam) {
+      next.team = normalizeTeam(JSON.parse(rawTeam) as Partial<TeamPairing>);
+    }
 
     const rawCards = localStorage.getItem(CARD_CACHE_KEY);
     if (rawCards) {
@@ -105,6 +136,17 @@ function updateTeam(fn: (t: TeamPairing) => TeamPairing) {
   update((s) => ({ ...s, team: fn(s.team) }));
 }
 
+export type ImportMode = "replace" | "merge";
+
+export type ImportedDeck = {
+  /** Deck name from the source list, if it had one. */
+  name?: string;
+  entries: DeckEntry[];
+  commanders?: string[];
+  /** Card data for the entries, so the import doesn't re-fetch what it knows. */
+  cards: ScryfallCard[];
+};
+
 type TeamContextValue = {
   team: TeamPairing;
   /** Scryfall data for every card in the team, keyed by canonical name. */
@@ -118,6 +160,8 @@ type TeamContextValue = {
   setQuantity: (name: string, slot: DeckSlot, quantity: number) => void;
   removeCard: (name: string, slot: DeckSlot) => void;
   renameDeck: (slot: DeckSlot, name: string) => void;
+  /** Drop a parsed decklist into a slot. See /import. */
+  importDeck: (slot: DeckSlot, deck: ImportedDeck, mode?: ImportMode) => void;
   setFormat: (format: FormatId) => void;
   setTeamName: (name: string) => void;
   clear: () => void;
@@ -227,6 +271,55 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  /**
+   * Import writes entries and card data in one update, so the backfill effect
+   * never fires for a list we already resolved server-side.
+   */
+  const importDeck = useCallback(
+    (slot: DeckSlot, incoming: ImportedDeck, mode: ImportMode = "replace") => {
+      update((s) => {
+        const deck = s.team[slot];
+
+        const merged = new Map<string, number>();
+        if (mode === "merge") {
+          for (const e of deck.entries) merged.set(e.name, e.quantity);
+        }
+        for (const e of incoming.entries) {
+          merged.set(e.name, (merged.get(e.name) ?? 0) + e.quantity);
+        }
+
+        const commanders = [
+          ...new Set([
+            ...(mode === "merge" ? deck.commanders : []),
+            ...(incoming.commanders ?? []),
+          ]),
+        ];
+
+        const nextCards = { ...s.cards };
+        for (const card of incoming.cards) nextCards[card.name] = card;
+
+        return {
+          ...s,
+          team: {
+            ...s.team,
+            [slot]: {
+              name: incoming.name?.trim() || deck.name,
+              entries: [...merged.entries()].map(([name, quantity]) => ({
+                name,
+                quantity,
+              })),
+              commanders,
+            },
+          },
+          cards: nextCards,
+          // A name we just resolved is no longer unresolved.
+          unresolved: s.unresolved.filter((n) => !(n in nextCards)),
+        };
+      });
+    },
+    [],
+  );
+
   const renameDeck = useCallback((slot: DeckSlot, name: string) => {
     updateTeam((t) => ({ ...t, [slot]: { ...t[slot], name } }));
   }, []);
@@ -254,6 +347,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      importDeck,
       setFormat,
       setTeamName,
       clear,
@@ -268,6 +362,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      importDeck,
       setFormat,
       setTeamName,
       clear,

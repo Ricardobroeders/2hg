@@ -6,6 +6,8 @@
  * static, so we cache it hard; search results churn a little more.
  */
 
+import { normalizeName } from "./decklist";
+
 const API = "https://api.scryfall.com";
 
 /** Scryfall asks for a descriptive UA and an explicit Accept header. */
@@ -233,4 +235,66 @@ export function oracleText(card: ScryfallCard): string {
       .join("\n//\n");
   }
   return "";
+}
+
+export type ResolvedNames = {
+  /** Name as written in the list → the canonical Scryfall card. */
+  resolved: Record<string, ScryfallCard>;
+  /** Names Scryfall had no match for, even fuzzily. */
+  notFound: string[];
+};
+
+/**
+ * Resolve written card names to canonical Scryfall cards, preserving which
+ * input produced which card.
+ *
+ * `getCardsByNames` throws that mapping away, but the importer needs it: a
+ * list saying "Atraxa, Praetors Voice" has to become "Atraxa, Praetors'
+ * Voice", and the user has to be told which lines we couldn't read at all.
+ */
+export async function resolveCardNames(
+  names: string[],
+): Promise<ResolvedNames> {
+  const wanted = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  if (wanted.length === 0) return { resolved: {}, notFound: [] };
+
+  const cards = await getCardsByNames(wanted);
+
+  // Scryfall doesn't guarantee response order, so match on a loose key rather
+  // than by index. Double-faced cards are indexed under their front face too,
+  // since most exports only write that half.
+  const byKey = new Map<string, ScryfallCard>();
+  for (const card of cards) {
+    byKey.set(normalizeName(card.name), card);
+    const front = card.card_faces?.[0]?.name;
+    if (front) byKey.set(normalizeName(front), card);
+  }
+
+  const resolved: Record<string, ScryfallCard> = {};
+  const misses: string[] = [];
+
+  for (const name of wanted) {
+    const hit = byKey.get(normalizeName(name));
+    if (hit) resolved[name] = hit;
+    else misses.push(name);
+  }
+
+  // Second pass for the stragglers — typos and partial names. Capped so a
+  // pasted wall of nonsense can't turn into hundreds of Scryfall requests.
+  const FUZZY_LIMIT = 20;
+  const notFound: string[] = misses.slice(FUZZY_LIMIT);
+
+  const fuzzy = await Promise.all(
+    misses.slice(0, FUZZY_LIMIT).map(async (name) => {
+      const card = await getCardByFuzzyName(name).catch(() => null);
+      return [name, card] as const;
+    }),
+  );
+
+  for (const [name, card] of fuzzy) {
+    if (card) resolved[name] = card;
+    else notFound.push(name);
+  }
+
+  return { resolved, notFound };
 }

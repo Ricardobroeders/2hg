@@ -8,6 +8,8 @@ import { useTeam } from "@/lib/team-store";
 const LINKS = [
   { href: "/cards", label: "Cards" },
   { href: "/team", label: "Team builder" },
+  { href: "/import", label: "Import" },
+  { href: "/rules", label: "Rules" },
 ];
 
 export function Nav() {
