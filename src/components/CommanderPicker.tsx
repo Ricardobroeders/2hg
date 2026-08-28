@@ -96,7 +96,9 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
     }
   }
 
-  const art = currentCard ? cardImage(currentCard, "art_crop") : null;
+  // Full card rather than a crop — see TeamCommanders. "small" is plenty at
+  // this size and keeps the builder light when both decks have one.
+  const art = currentCard ? cardImage(currentCard, "small") : null;
 
   return (
     <div ref={boxRef} className="relative">
@@ -106,11 +108,11 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
             // eslint-disable-next-line @next/next/no-img-element -- Scryfall CDN
             <img
               src={art}
-              alt=""
-              className="h-9 w-9 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+              alt={current}
+              className="w-10 shrink-0 rounded object-cover shadow-md shadow-black/50 ring-1 ring-white/10 aspect-[63/88]"
             />
           ) : (
-            <span className="h-9 w-9 shrink-0 rounded-full bg-white/5 ring-1 ring-white/10" />
+            <span className="w-10 shrink-0 rounded bg-white/5 ring-1 ring-white/10 aspect-[63/88]" />
           )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-medium text-white">{current}</p>
@@ -138,7 +140,7 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
           onClick={() => setOpen((v) => !v)}
           className="flex w-full items-center gap-2.5 rounded-lg border border-dashed border-white/15 px-2.5 py-2 text-left transition hover:border-emerald-400/40 hover:bg-white/[0.03]"
         >
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/5 text-zinc-600">
+          <span className="grid w-10 shrink-0 place-items-center rounded bg-white/5 text-zinc-600 aspect-[63/88]">
             +
           </span>
           <span className="text-xs text-zinc-400">Choose a commander</span>

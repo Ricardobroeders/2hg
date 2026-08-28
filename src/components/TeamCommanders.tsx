@@ -8,7 +8,9 @@ function Face({ slot }: { slot: DeckSlot }) {
   const { team, cards } = useTeam();
   const name = team[slot].commanders[0] ?? null;
   const card = name ? cards.get(name) : undefined;
-  const art = card ? cardImage(card, "art_crop") : null;
+  // Full card, not an art crop: the frame, mana cost and type line are most
+  // of what makes a commander recognisable at a glance.
+  const art = card ? cardImage(card, "normal") : null;
 
   return (
     <div className="flex min-w-0 items-center gap-2.5">
@@ -16,11 +18,12 @@ function Face({ slot }: { slot: DeckSlot }) {
         // eslint-disable-next-line @next/next/no-img-element -- Scryfall CDN
         <img
           src={art}
-          alt=""
-          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-white/15"
+          alt={name ?? ""}
+          /* 63:88 is the real Magic card ratio, so nothing is cropped. */
+          className="w-14 shrink-0 rounded-md object-cover shadow-lg shadow-black/50 ring-1 ring-white/10 aspect-[63/88]"
         />
       ) : (
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-dashed border-white/15 text-xs text-zinc-700">
+        <span className="grid w-14 shrink-0 place-items-center rounded-md border border-dashed border-white/15 text-xs text-zinc-700 aspect-[63/88]">
           {slot.toUpperCase()}
         </span>
       )}

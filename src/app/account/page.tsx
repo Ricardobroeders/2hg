@@ -36,7 +36,9 @@ export default async function AccountPage() {
   if (commanderNames.length) {
     const cards = await getCardsByNames(commanderNames).catch(() => []);
     for (const c of cards) {
-      const url = cardImage(c, "art_crop");
+      // Full card, small size — recognisable at thumbnail scale without
+      // pulling a 500px image per row.
+      const url = cardImage(c, "small");
       if (url) art.set(c.name, url);
     }
   }
@@ -114,7 +116,7 @@ export default async function AccountPage() {
                   {/* A pairing is recognised by its commanders long before
                       its name, so they lead the row. */}
                   {p.commanders.length > 0 && (
-                    <span className="flex shrink-0 -space-x-2">
+                    <span className="flex shrink-0 gap-1">
                       {p.commanders.slice(0, 2).map((name) =>
                         art.has(name) ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -123,13 +125,13 @@ export default async function AccountPage() {
                             src={art.get(name)}
                             alt={name}
                             title={name}
-                            className="h-9 w-9 rounded-full object-cover ring-2 ring-zinc-950"
+                            className="w-9 rounded object-cover ring-1 ring-white/10 aspect-[63/88]"
                           />
                         ) : (
                           <span
                             key={name}
                             title={name}
-                            className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-[10px] text-zinc-500 ring-2 ring-zinc-950"
+                            className="grid w-9 place-items-center rounded bg-white/5 text-[10px] text-zinc-500 ring-1 ring-white/10 aspect-[63/88]"
                           >
                             {name.slice(0, 1)}
                           </span>
