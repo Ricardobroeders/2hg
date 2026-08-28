@@ -2,16 +2,21 @@
 
 import { useState } from "react";
 import { useTeam } from "@/lib/team-store";
-import { FORMATS, teamAsDecklist, type FormatId } from "@/lib/team";
+import { teamAsDecklist } from "@/lib/team";
 import { massEntryLink, teamPrice } from "@/lib/affiliates";
 import { ShareTeam } from "./ShareTeam";
 
 /**
- * Format switch, export, and the primary monetization surface: one action that
- * carts both decklists together.
+ * Export and the primary monetization surface: one action that carts both
+ * decklists together.
+ *
+ * No format switch. 2HG Commander is the only format we point people at while
+ * we focus, and Constructed was never the default. The format still exists in
+ * `src/lib/team.ts` and on `/rules` — this only removes the builder control,
+ * so saved Constructed pairings keep validating correctly.
  */
 export function TeamActions() {
-  const { team, cards, validation, setFormat, clear } = useTeam();
+  const { team, cards, validation, clear } = useTeam();
   const [copied, setCopied] = useState(false);
 
   const price = teamPrice(team, cards);
@@ -25,27 +30,6 @@ export function TeamActions() {
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          Format
-        </h2>
-        <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-white/5 p-1">
-          {(Object.keys(FORMATS) as FormatId[]).map((id) => (
-            <button
-              key={id}
-              onClick={() => setFormat(id)}
-              className={`rounded-md px-3 py-2 text-xs font-medium transition ${
-                team.format === id
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-400 hover:text-white"
-              }`}
-            >
-              {FORMATS[id].label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5">
         <h2 className="text-sm font-semibold text-white">Buy the whole team</h2>
         <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">

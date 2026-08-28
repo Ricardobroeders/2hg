@@ -28,8 +28,10 @@ export default function TeamPage() {
             aria-label="Team name"
             className="w-full max-w-md rounded-lg border border-transparent bg-transparent px-2 py-1 text-2xl font-semibold tracking-tight text-white outline-none hover:border-white/10 focus:border-emerald-400/40"
           />
+          {/* Not "one legal unit" — 2HG Commander has no unified deck rule.
+              Each deck is individually legal; what's shared is the game. */}
           <p className="mt-1 px-2 text-sm text-zinc-500">
-            Two decks, validated as one legal unit.
+            Two Commander decks, one shared life total — rated as a team.
           </p>
         </div>
 
@@ -52,8 +54,8 @@ export default function TeamPage() {
           <DeckColumn slot="b" />
 
           <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
-            <LegalityPanel />
             <TeamActions />
+            <LegalityPanel />
 
             <p className="text-xs leading-relaxed text-zinc-600">
               This pairing lives in your browser until you save it —{" "}
