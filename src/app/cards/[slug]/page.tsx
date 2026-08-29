@@ -9,6 +9,7 @@ import { ScoreBadge, ScoreMeter } from "@/components/ScoreBadge";
 import { AffiliateButtons } from "@/components/AffiliateButtons";
 import { AddToTeam } from "@/components/AddToTeam";
 import { CardTile } from "@/components/CardTile";
+import { ManaCost, ManaText } from "@/components/ManaSymbols";
 
 export async function generateMetadata({
   params,
@@ -70,11 +71,16 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
               </h1>
               <ScoreBadge score={score} size="lg" />
             </div>
-            <p className="mt-2 font-mono text-sm text-zinc-500">
-              {card.type_line}
-              {card.mana_cost && ` · ${card.mana_cost}`}
-              {" · "}
-              {card.set_name}
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 font-mono text-sm text-zinc-500">
+              <span>{card.type_line}</span>
+              {card.mana_cost && (
+                <>
+                  <span aria-hidden>·</span>
+                  <ManaCost cost={card.mana_cost} size="lg" />
+                </>
+              )}
+              <span aria-hidden>·</span>
+              <span>{card.set_name}</span>
             </p>
           </header>
 
@@ -139,8 +145,10 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
               <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-500">
                 Oracle text
               </h2>
-              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-zinc-300">
-                {oracleText(card)}
+              {/* leading-7 buys the inline symbols room; the default line
+                  height crowds them against the row above. */}
+              <p className="mt-3 whitespace-pre-line text-sm leading-7 text-zinc-300">
+                <ManaText text={oracleText(card)} size="md" />
               </p>
             </section>
           )}
