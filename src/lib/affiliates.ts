@@ -22,12 +22,32 @@ export type Vendor = {
   label: string;
   /** Currency hint shown next to the price. */
   currency: "USD" | "EUR";
+  /**
+   * Monochrome mark in `public/images`. Lives here rather than in the button
+   * component so adding a marketplace stays a one-line change in this file.
+   */
+  logo: string;
 };
 
 export const VENDORS: Vendor[] = [
-  { id: "tcgplayer", label: "TCGplayer", currency: "USD" },
-  { id: "cardkingdom", label: "Card Kingdom", currency: "USD" },
-  { id: "cardmarket", label: "Cardmarket", currency: "EUR" },
+  {
+    id: "tcgplayer",
+    label: "TCGplayer",
+    currency: "USD",
+    logo: "/images/tcg.svg",
+  },
+  {
+    id: "cardkingdom",
+    label: "Card Kingdom",
+    currency: "USD",
+    logo: "/images/cardkingdom.svg",
+  },
+  {
+    id: "cardmarket",
+    label: "Cardmarket",
+    currency: "EUR",
+    logo: "/images/cardmarket.svg",
+  },
 ];
 
 function withPartner(url: string, vendor: Vendor["id"]): string {

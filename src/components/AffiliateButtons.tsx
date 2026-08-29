@@ -16,10 +16,23 @@ export function AffiliateButtons({ card }: { card: ScryfallCard }) {
             href={cardLink(card, vendor.id)}
             target="_blank"
             rel="noopener noreferrer sponsored"
-            className="flex items-center justify-between rounded-lg bg-white/5 px-4 py-3 text-sm ring-1 ring-inset ring-white/10 transition hover:bg-white/10 hover:ring-white/25"
+            className="group flex items-center justify-between gap-3 rounded-lg bg-white/5 px-4 py-3 text-sm ring-1 ring-inset ring-white/10 transition hover:bg-white/10 hover:ring-white/25"
           >
-            <span className="text-zinc-200">{vendor.label}</span>
-            <span className="tabular-nums text-zinc-400">
+            <span className="flex min-w-0 items-center gap-3">
+              {/* Marks are monochrome white, so they carry the row without
+                  competing with the price. Dimmed until hover so the price
+                  stays the thing you read first. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={vendor.logo}
+                alt=""
+                width={20}
+                height={20}
+                className="h-5 w-5 shrink-0 opacity-70 transition group-hover:opacity-100"
+              />
+              <span className="truncate text-zinc-200">{vendor.label}</span>
+            </span>
+            <span className="shrink-0 tabular-nums text-zinc-400">
               {price ?? "View"}
               <span className="ml-2 text-zinc-600">↗</span>
             </span>
