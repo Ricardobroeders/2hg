@@ -306,21 +306,26 @@ export async function listTeamsByOwner(ownerId: string): Promise<
       kind: teams.kind,
       viewCount: teams.viewCount,
       updatedAt: teams.updatedAt,
-      commanders: sql<string[]>`
-        coalesce((
-          select array_agg(c order by c)
-          from ${decks} d2, unnest(d2.commanders) AS c
-          where d2.team_id = ${teams.id}
-        ), ARRAY[]::text[])
-      `,
-      cardCount: sql<number>`
-        coalesce((
-          select sum(${deckCards.quantity})
-          from ${deckCards}
-          join ${decks} on ${decks.id} = ${deckCards.deckId}
-          where ${decks.teamId} = ${teams.id}
-        ), 0)::int
-      `,
+      /**
+       * Written as literal SQL with no `${}` interpolation, deliberately.
+       *
+       * Drizzle renders an interpolated column inside a `sql` template
+       * *unqualified* — `${teams.id}` becomes `"id"`, not `"teams"."id"`. In a
+       * correlated subquery that silently resolves to the subquery's own
+       * table, so `d.team_id = teams.id` became `d.team_id = d.id`: never
+       * true, no error, just zeros and empty arrays. Keep these literal.
+       */
+      commanders: sql<string[]>`(
+        select coalesce(array_agg(c order by c), ARRAY[]::text[])
+        from decks d, unnest(d.commanders) as c
+        where d.team_id = teams.id
+      )`,
+      cardCount: sql<number>`(
+        select coalesce(sum(dc.quantity), 0)::int
+        from deck_cards dc
+        join decks d on d.id = dc.deck_id
+        where d.team_id = teams.id
+      )`,
     })
     .from(teams)
     .where(eq(teams.ownerId, ownerId))
