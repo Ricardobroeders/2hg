@@ -37,7 +37,7 @@ export function AdoptTeam({
     // A copy, not a claim — the original link keeps working for its owner.
     replaceTeam({ ...team, id: "local" }, cards);
     setTaken(true);
-    router.push("/team");
+    router.push("/deck-builder");
   }
 
   return (

@@ -96,22 +96,28 @@ export default async function AccountPage() {
             <p className="mx-auto mt-2 max-w-sm text-xs leading-relaxed text-zinc-500">
               Save a pairing to share both decks with a teammate, or save a
               single deck on its own. Either way it lands here automatically
-              while you&apos;re signed in.
+              while you&apos;re signed in, and you can reopen it in the builder
+              to change it.
             </p>
             <Link
-              href="/team"
+              href="/deck-builder"
               className="mt-5 inline-flex rounded-lg bg-emerald-400 px-4 py-2 text-sm font-medium text-zinc-950 transition hover:bg-emerald-300"
             >
-              Open the team builder
+              Open the deck builder
             </Link>
           </div>
         ) : (
           <ul className="mt-4 divide-y divide-white/5 overflow-hidden rounded-xl border border-white/10">
             {pairings.map((p) => (
-              <li key={p.slug}>
+              <li
+                key={p.slug}
+                className="flex items-center gap-4 px-5 py-4 transition hover:bg-white/5"
+              >
+                {/* The row opens the public view; editing is its own action,
+                    because it loads over whatever is in the builder. */}
                 <Link
                   href={p.kind === "solo" ? `/d/${p.slug}` : `/t/${p.slug}`}
-                  className="flex items-center gap-4 px-5 py-4 transition hover:bg-white/5"
+                  className="flex min-w-0 flex-1 items-center gap-4"
                 >
                   {/* A pairing is recognised by its commanders long before
                       its name, so they lead the row. */}
@@ -170,6 +176,13 @@ export default async function AccountPage() {
                   <span className="shrink-0 text-xs tabular-nums text-zinc-500">
                     {p.viewCount} {p.viewCount === 1 ? "view" : "views"}
                   </span>
+                </Link>
+
+                <Link
+                  href={`/deck-builder?edit=${p.slug}`}
+                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs text-zinc-400 ring-1 ring-inset ring-white/15 transition hover:bg-white/5 hover:text-white"
+                >
+                  Edit
                 </Link>
               </li>
             ))}

@@ -200,19 +200,34 @@ export async function getTeamBySlug(slug: string): Promise<StoredTeam | null> {
   };
 }
 
-/** Whether this token may edit this pairing. */
+/**
+ * Whether this caller may edit this pairing.
+ *
+ * Two independent claims, either of which is enough:
+ *
+ * - the anonymous creator's `editToken`, held in their browser since they first
+ *   saved — this is what keeps create-and-share working with no account;
+ * - the signed-in owner, who reopens their own deck from `/account` and has no
+ *   token to present because they never needed one.
+ *
+ * Ownership is checked against the session's user id, never a client-supplied
+ * one, so this can't be spoofed by passing someone else's id.
+ */
 export async function canEdit(
   slug: string,
-  editToken: string,
+  editToken: string | null,
+  userId: string | null = null,
 ): Promise<boolean> {
   const db = getDb();
   const [row] = await db
-    .select({ editToken: teams.editToken })
+    .select({ editToken: teams.editToken, ownerId: teams.ownerId })
     .from(teams)
     .where(eq(teams.slug, slug))
     .limit(1);
 
-  return row != null && row.editToken === editToken;
+  if (!row) return false;
+  if (editToken != null && row.editToken === editToken) return true;
+  return userId != null && row.ownerId === userId;
 }
 
 /**

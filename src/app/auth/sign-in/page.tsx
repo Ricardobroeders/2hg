@@ -48,7 +48,7 @@ export default async function SignInPage({
         You don&apos;t need an account to build a team or send a share link —
         that works signed out and always will.{" "}
         <Link
-          href="/team"
+          href="/deck-builder"
           className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
         >
           Back to the builder

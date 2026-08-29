@@ -7,6 +7,7 @@ import { getCardsByNames } from "@/lib/scryfall";
 import { FORMATS } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { AdoptTeam } from "@/components/AdoptTeam";
+import { PairingCommanders } from "@/components/PairingCommanders";
 import { SharedDeck } from "@/components/SharedDeck";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,10 @@ export default async function SharedDeckPage(props: PageProps<"/d/[slug]">) {
   const { team } = stored;
   const rules = FORMATS[team.format];
 
-  const names = team.a.entries.map((e) => e.name);
+  // Commanders aren't reliably among the entries — see the note on /t/[slug].
+  const names = [
+    ...new Set([...team.a.entries.map((e) => e.name), ...team.a.commanders]),
+  ];
   const cardList = await getCardsByNames(names);
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
@@ -99,7 +103,11 @@ export default async function SharedDeckPage(props: PageProps<"/d/[slug]">) {
         )}
       </header>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
+      <div className="mt-8">
+        <PairingCommanders decks={[{ slot: "a", deck: team.a }]} cards={cards} />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
         <SharedDeck deck={team.a} slot="a" cards={cards} />
 
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
@@ -117,7 +125,7 @@ export default async function SharedDeckPage(props: PageProps<"/d/[slug]">) {
               with a partner and see how they play together.
             </p>
             <Link
-              href="/team"
+              href="/deck-builder"
               className="mt-3 inline-block text-xs text-emerald-400 hover:text-emerald-300"
             >
               Build a pairing around it →

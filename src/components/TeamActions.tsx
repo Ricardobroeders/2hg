@@ -7,8 +7,12 @@ import { massEntryLink, teamPrice } from "@/lib/affiliates";
 import { ShareTeam } from "./ShareTeam";
 
 /**
- * Export and the primary monetization surface: one action that carts both
- * decklists together.
+ * The pairing's own actions: save it, cart it, export it.
+ *
+ * Save leads. The pairing is the thing being built, and burying its save under
+ * the buy box was enough to make people think only single decks could be saved.
+ * Buy follows immediately — it's still the monetization surface, just not the
+ * first thing competing for the click.
  *
  * No format switch. 2HG Commander is the only format we point people at while
  * we focus, and Constructed was never the default. The format still exists in
@@ -30,6 +34,8 @@ export function TeamActions() {
 
   return (
     <div className="space-y-5">
+      <ShareTeam />
+
       <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5">
         <h2 className="text-sm font-semibold text-white">Buy the whole team</h2>
         <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
@@ -61,7 +67,6 @@ export function TeamActions() {
         </a>
       </div>
 
-      <ShareTeam />
 
       <div className="flex gap-2">
         <button

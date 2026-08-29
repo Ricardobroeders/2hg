@@ -7,6 +7,7 @@ import { getCardsByNames } from "@/lib/scryfall";
 import { FORMATS, validateTeam } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { AdoptTeam } from "@/components/AdoptTeam";
+import { PairingCommanders } from "@/components/PairingCommanders";
 import { SharedDeck } from "@/components/SharedDeck";
 
 /** A shared pairing is a snapshot someone sent a teammate — always fresh. */
@@ -54,7 +55,19 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
   const { team } = stored;
   const rules = FORMATS[team.format];
 
-  const names = [...team.a.entries, ...team.b.entries].map((e) => e.name);
+  /**
+   * Commanders are folded in explicitly rather than assumed to be among the
+   * entries. Both shapes exist in stored data — a pasted list carries its
+   * commander as a card, while one picked in the builder is recorded only in
+   * `commanders` — and a pairing whose commanders had no art was the result.
+   */
+  const names = [
+    ...new Set([
+      ...[...team.a.entries, ...team.b.entries].map((e) => e.name),
+      ...team.a.commanders,
+      ...team.b.commanders,
+    ]),
+  ];
   const cardList = await getCardsByNames(names);
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
@@ -98,7 +111,17 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
         )}
       </header>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,300px)]">
+      <div className="mt-8">
+        <PairingCommanders
+          decks={[
+            { slot: "a", deck: team.a },
+            { slot: "b", deck: team.b },
+          ]}
+          cards={cards}
+        />
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,300px)]">
         <SharedDeck deck={team.a} slot="a" cards={cards} />
         <SharedDeck deck={team.b} slot="b" cards={cards} />
 

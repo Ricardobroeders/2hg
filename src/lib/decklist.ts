@@ -90,6 +90,13 @@ function cleanName(raw: string): { name: string; isCommander: boolean } {
   // Bracketed tails: [Ramp], [LTC], [Ramp,Artifacts].
   name = name.replace(/\s*\[[^\]]*\]\s*$/g, " ");
 
+  // Multi-face cards: keep the front face only. Scryfall's bulk collection
+  // lookup rejects the joined form — "Fire // Ice" and "Birgi, God of
+  // Storytelling // Harnfel, Horn of Bounty" both come back not_found, while
+  // "Fire" and "Birgi, God of Storytelling" resolve to the same card. Exports
+  // write the join with one slash or two, so accept either.
+  name = name.replace(/\s+\/{1,2}\s+.*$/, "");
+
   // "(SET) 123" or "(SET)". Collector numbers can carry a letter suffix
   // ("123a", "★"), so allow a loose token after the set code.
   name = name.replace(/\s*\(([A-Za-z0-9]{2,6})\)(\s+[\w★-]+)?\s*$/, " ");
@@ -161,6 +168,11 @@ export function parseDecklist(input: string): ParsedDecklist {
  * Loose key for matching a written name against Scryfall's canonical one.
  * Handles smart quotes, accents, and lists that give only a double-faced
  * card's front face.
+ *
+ * Split on a single slash, not "//": Scryfall writes both faces as
+ * "Birgi, God of Storytelling // Harnfel, Horn of Bounty", but exports in the
+ * wild drop a half and write one slash. Keying on the front face alone matches
+ * every spelling of the same card.
  */
 export function normalizeName(name: string): string {
   return name
@@ -168,7 +180,7 @@ export function normalizeName(name: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\u2018\u2019\u02bc]/g, "'")
     .replace(/[\u2013\u2014]/g, "-")
-    .split("//")[0]
+    .split("/")[0]
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "")
     .trim();

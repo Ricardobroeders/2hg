@@ -1,13 +1,15 @@
 "use client";
 
+import { Suspense } from "react";
 import { useTeam } from "@/lib/team-store";
+import { OpenSaved } from "@/components/OpenSaved";
 import { DeckColumn } from "@/components/DeckColumn";
 import { LegalityPanel } from "@/components/LegalityPanel";
 import { TeamActions } from "@/components/TeamActions";
 import { TeamCommanders } from "@/components/TeamCommanders";
 import { scoreCard } from "@/lib/twohg-score";
 
-export default function TeamPage() {
+export default function DeckBuilderPage() {
   const { team, cards, validation, hydrated, setTeamName } = useTeam();
 
   // Average 2HG rating across the pairing — the headline "is this a 2HG deck?" number.
@@ -46,6 +48,12 @@ export default function TeamPage() {
           </div>
         )}
       </header>
+
+      {/* useSearchParams needs a boundary so the rest of the builder can still
+          be prerendered as a static shell. */}
+      <Suspense fallback={null}>
+        <OpenSaved />
+      </Suspense>
 
       {!hydrated ? (
         <p className="py-24 text-center text-sm text-zinc-600">Loading your team…</p>

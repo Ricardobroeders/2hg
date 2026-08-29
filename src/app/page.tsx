@@ -67,7 +67,7 @@ export default async function HomePage() {
 
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
             <Link
-              href="/team"
+              href="/deck-builder"
               className="rounded-lg bg-emerald-400 px-4 py-2.5 font-medium text-zinc-950 transition hover:bg-emerald-300"
             >
               Build a team pairing

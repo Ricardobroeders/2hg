@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCardsByNames } from "@/lib/scryfall";
 
 /**
- * Bulk card hydration for the team builder. The client holds only card names;
+ * Bulk card hydration for the deck builder. The client holds only card names;
  * this fills in oracle text, images and prices in a single round trip.
  */
 export async function POST(request: Request) {

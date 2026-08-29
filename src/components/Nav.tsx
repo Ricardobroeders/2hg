@@ -8,8 +8,7 @@ import { useTeam } from "@/lib/team-store";
 
 const LINKS = [
   { href: "/cards", label: "Cards" },
-  { href: "/team", label: "Team builder" },
-  { href: "/import", label: "Import" },
+  { href: "/deck-builder", label: "Deck builder" },
   { href: "/rules", label: "Rules" },
 ];
 
@@ -52,7 +51,7 @@ export function Nav() {
               }`}
             >
               {link.label}
-              {link.href === "/team" && hydrated && total > 0 && (
+              {link.href === "/deck-builder" && hydrated && total > 0 && (
                 <span className="ml-2 rounded-full bg-emerald-400/20 px-1.5 py-0.5 text-[11px] tabular-nums text-emerald-300">
                   {total}
                 </span>

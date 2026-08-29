@@ -37,13 +37,20 @@ import {
 const STORAGE_KEY = "2hg:team:v1";
 const CARD_CACHE_KEY = "2hg:cards:v1";
 const SHARE_KEY = "2hg:share:v1";
+const DECK_REFS_KEY = "2hg:decks:v1";
 
 /**
- * A pairing we've saved to the server. `editToken` is the anonymous creator's
- * proof of ownership — it lives only in this browser, so losing it means
- * losing the ability to update that share link.
+ * Something we've saved to the server and can still change.
+ *
+ * `editToken` is the anonymous creator's proof of ownership — it lives only in
+ * this browser, so losing it means losing the ability to update that link. It
+ * is null when we're relying on the account instead: a signed-in owner opening
+ * their own deck from `/account` never had a token, and doesn't need one.
  */
-export type SharedRef = { slug: string; editToken: string };
+export type SharedRef = { slug: string; editToken: string | null };
+
+/** Solo deck links, per builder slot. A slot holds at most one. */
+export type DeckRefs = Partial<Record<DeckSlot, SharedRef>>;
 
 type Snapshot = {
   team: TeamPairing;
@@ -51,8 +58,14 @@ type Snapshot = {
   cards: Record<string, ScryfallCard>;
   /** Names Scryfall couldn't resolve, so we stop asking for them. */
   unresolved: string[];
-  /** Set once this pairing has been shared. */
+  /** Set once this *pairing* has been shared. */
   share: SharedRef | null;
+  /**
+   * Set per slot once that deck has been saved on its own. Kept apart from
+   * `share` because the two are different objects on the server: saving deck A
+   * alone must not hijack the pairing's link, and vice versa.
+   */
+  decks: DeckRefs;
 };
 
 /** Stable identity: the server renders an empty team, always. */
@@ -61,6 +74,7 @@ const SERVER_SNAPSHOT: Snapshot = {
   cards: {},
   unresolved: [],
   share: null,
+  decks: {},
 };
 
 let snapshot: Snapshot | null = null;
@@ -97,6 +111,7 @@ function readStorage(): Snapshot {
     cards: {},
     unresolved: [],
     share: null,
+    decks: {},
   };
   try {
     const rawTeam = localStorage.getItem(STORAGE_KEY);
@@ -113,6 +128,9 @@ function readStorage(): Snapshot {
 
     const rawShare = localStorage.getItem(SHARE_KEY);
     if (rawShare) next.share = JSON.parse(rawShare) as SharedRef;
+
+    const rawDecks = localStorage.getItem(DECK_REFS_KEY);
+    if (rawDecks) next.decks = JSON.parse(rawDecks) as DeckRefs;
   } catch {
     // Corrupt or unavailable storage just means we start empty.
   }
@@ -125,6 +143,12 @@ function persist(s: Snapshot) {
     localStorage.setItem(CARD_CACHE_KEY, JSON.stringify(Object.values(s.cards)));
     if (s.share) localStorage.setItem(SHARE_KEY, JSON.stringify(s.share));
     else localStorage.removeItem(SHARE_KEY);
+
+    if (Object.keys(s.decks).length > 0) {
+      localStorage.setItem(DECK_REFS_KEY, JSON.stringify(s.decks));
+    } else {
+      localStorage.removeItem(DECK_REFS_KEY);
+    }
   } catch {
     // Private browsing / quota — the session still works, it just won't persist.
   }
@@ -186,13 +210,24 @@ type TeamContextValue = {
    * unless the name has been edited by hand — see the implementation.
    */
   setCommander: (slot: DeckSlot, card: ScryfallCard | null) => void;
-  /** Drop a parsed decklist into a slot. See /import. */
+  /** Drop a parsed decklist into a slot. See the bulk importer. */
   importDeck: (slot: DeckSlot, deck: ImportedDeck, mode?: ImportMode) => void;
-  /** Replace the whole pairing — used when adopting a shared link. */
-  replaceTeam: (team: TeamPairing, cards: ScryfallCard[]) => void;
+  /**
+   * Replace the whole pairing. Used both when adopting someone else's shared
+   * link (no refs — you get a copy, not their edit rights) and when reopening
+   * your own saved deck to edit it (refs, so Save updates it in place).
+   */
+  replaceTeam: (
+    team: TeamPairing,
+    cards: ScryfallCard[],
+    refs?: { share?: SharedRef | null; decks?: DeckRefs },
+  ) => void;
   /** The saved share link for this pairing, if it has one. */
   share: SharedRef | null;
   setShare: (share: SharedRef | null) => void;
+  /** Saved solo-deck links, per slot. */
+  deckRefs: DeckRefs;
+  setDeckRef: (slot: DeckSlot, ref: SharedRef | null) => void;
   setFormat: (format: FormatId) => void;
   setTeamName: (name: string) => void;
   clear: () => void;
@@ -396,7 +431,11 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   );
 
   const replaceTeam = useCallback(
-    (next: TeamPairing, incoming: ScryfallCard[]) => {
+    (
+      next: TeamPairing,
+      incoming: ScryfallCard[],
+      refs?: { share?: SharedRef | null; decks?: DeckRefs },
+    ) => {
       update((s) => {
         const nextCards = { ...s.cards };
         for (const card of incoming) nextCards[card.name] = card;
@@ -405,8 +444,10 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           team: next,
           cards: nextCards,
           unresolved: s.unresolved.filter((n) => !(n in nextCards)),
-          // Adopting someone else's pairing gives you a copy, not their link.
-          share: null,
+          // Default is no refs at all: adopting someone else's pairing gives
+          // you a copy, never their ability to edit the original.
+          share: refs?.share ?? null,
+          decks: refs?.decks ?? {},
         };
       });
     },
@@ -415,6 +456,15 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
 
   const setShare = useCallback((share: SharedRef | null) => {
     update((s) => ({ ...s, share }));
+  }, []);
+
+  const setDeckRef = useCallback((slot: DeckSlot, ref: SharedRef | null) => {
+    update((s) => {
+      const decks = { ...s.decks };
+      if (ref) decks[slot] = ref;
+      else delete decks[slot];
+      return { ...s, decks };
+    });
   }, []);
 
   const setFormat = useCallback((format: FormatId) => {
@@ -426,7 +476,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const clear = useCallback(
-    () => update((s) => ({ ...s, team: emptyTeam(), share: null })),
+    () => update((s) => ({ ...s, team: emptyTeam(), share: null, decks: {} })),
     [],
   );
 
@@ -448,6 +498,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       replaceTeam,
       share: snap.share,
       setShare,
+      deckRefs: snap.decks,
+      setDeckRef,
       setFormat,
       setTeamName,
       clear,
@@ -466,6 +518,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       importDeck,
       replaceTeam,
       setShare,
+      setDeckRef,
       setFormat,
       setTeamName,
       clear,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { currentUserId } from "@/lib/auth/server";
 import { DatabaseNotConfiguredError } from "@/lib/db";
 import {
   canEdit,
@@ -54,17 +55,21 @@ export async function PUT(
     editToken?: string;
   } | null;
 
-  if (!body?.team || !body.editToken) {
-    return NextResponse.json(
-      { error: "team and editToken required" },
-      { status: 400 },
-    );
+  if (!body?.team) {
+    return NextResponse.json({ error: "team required" }, { status: 400 });
   }
 
   try {
-    if (!(await canEdit(slug, body.editToken))) {
+    // No editToken is fine as long as the session owns this row — that's the
+    // "open my saved deck from /account and change it" path.
+    const userId = await currentUserId();
+    if (!(await canEdit(slug, body.editToken ?? null, userId))) {
       return NextResponse.json(
-        { error: "That edit link is no longer valid." },
+        {
+          error: userId
+            ? "That deck isn't yours to edit."
+            : "That edit link is no longer valid. Sign in if it's yours.",
+        },
         { status: 403 },
       );
     }

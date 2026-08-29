@@ -64,9 +64,13 @@ this, and `/rules` renders from it. Change the data, not the prose.
 | `/` | Shelves of cards whose value shifts in 2HG, from live Scryfall queries |
 | `/cards?q=` | Full Scryfall search syntax, re-ranked by 2HG Rating |
 | `/cards/[slug]` | Rating breakdown, oracle text, synergy picks, buy links |
-| `/import` | Paste a decklist — the fast path in, since decks live elsewhere |
-| `/team` | The pairing: two decks side by side |
+| `/deck-builder` | Two decks side by side. Search a card in, or bulk-paste a whole list |
+| `/deck-builder?edit=` | Reopens something you saved so you can change it |
 | `/rules` | Format reference, rendered from `team.ts` |
+
+`/team` and `/import` were the earlier names for the builder and a standalone
+paste page; both now redirect into `/deck-builder`. Importing a list is a step
+in building a deck, not a place you go.
 
 ### The 2HG Rating
 
@@ -114,6 +118,31 @@ These are honest gaps, not oversights:
 - **Pairing analysis isn't built yet.** Role coverage, curve collision and
   cross-deck anti-synergy are the intended differentiators and don't exist in
   code.
+
+## Tournament data: checked, not usable yet
+
+[TopDeck.gg](https://topdeck.gg) is the only public source that could give us
+*observed* 2HG pairings — two decklists and one shared result. Their API models
+team events properly (`isTeamEvent`, per-seat `teamTag`, a `match` key grouping
+sub-matches), so the shape is right. The events aren't.
+
+`npm run topdeck:probe` measures it. As of 2026-08, across 19 two-headed-giant
+EDH events in 400 days:
+
+- 26 decklists total, all from two events that were run as ordinary four-player
+  pods — no team structure at all, so there's no way to recover who partnered
+  with whom.
+- Team structure in five events, recorded either properly or as a free-text
+  pair name ("Josh G + Sam Ahola") — and every one of them has zero decklists.
+- **Standing rows carrying both a partner and a decklist: 0.**
+
+Organisers collect one or the other, never both. Until that changes there is
+nothing to ingest, so nothing in the app reads the API and the footer carries
+no TopDeck credit. Re-run the probe occasionally; the credit and the ingest
+land together in the same commit as the first non-zero result.
+
+Their terms require a visible credit and link back from anything using the API,
+and the bulk search endpoint rate-limits well below the documented 100/min.
 
 ## Where the database slots in
 

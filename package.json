@@ -9,7 +9,8 @@
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "topdeck:probe": "node --no-warnings --experimental-strip-types --env-file=.env.local scripts/topdeck-2hg-probe.ts"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.5.0-beta",

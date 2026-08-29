@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { cardImage } from "@/lib/scryfall";
 import { useTeam } from "@/lib/team-store";
 import { FORMATS, type DeckSlot } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
+import { BulkImport } from "./BulkImport";
+import { CardLink } from "./CardLink";
 import { CommanderPicker } from "./CommanderPicker";
 import { QuickAdd } from "./QuickAdd";
 import { SaveDeck } from "./SaveDeck";
@@ -59,8 +61,13 @@ export function DeckColumn({ slot }: { slot: DeckSlot }) {
           <CommanderPicker slot={slot} />
         </div>
 
-        <div className="mt-3">
-          <QuickAdd slot={slot} />
+        {/* Search one card, or paste the whole list — the two ways into a
+            deck, side by side. */}
+        <div className="mt-3 flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <QuickAdd slot={slot} />
+          </div>
+          <BulkImport slot={slot} />
         </div>
       </header>
 
@@ -104,15 +111,17 @@ export function DeckColumn({ slot }: { slot: DeckSlot }) {
                     </button>
                   </div>
 
-                  <Link
-                    href={`/cards/${toSlug(entry.name)}`}
-                    title={problem}
-                    className={`min-w-0 flex-1 truncate text-sm hover:text-white ${
-                      problem ? "text-rose-200" : "text-zinc-200"
-                    }`}
-                  >
-                    {entry.name}
-                  </Link>
+                  <span className="min-w-0 flex-1 truncate">
+                    <CardLink
+                      name={entry.name}
+                      href={`/cards/${toSlug(entry.name)}`}
+                      title={problem}
+                      image={card ? cardImage(card, "normal") : null}
+                      className={`text-sm hover:text-white ${
+                        problem ? "text-rose-200" : "text-zinc-200"
+                      }`}
+                    />
+                  </span>
 
                   {isShared && (
                     <span

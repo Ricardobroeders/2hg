@@ -50,7 +50,7 @@ export default function PrivacyPage() {
           are linked to your account.
         </p>
         <p>
-          <strong>In your browser:</strong> the team builder keeps your
+          <strong>In your browser:</strong> the deck builder keeps your
           in-progress decks, a cache of card data and a reference to your share
           link in <code>localStorage</code>. That stays on your device and is
           never sent to us except when you press share.

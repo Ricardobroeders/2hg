@@ -10,7 +10,7 @@ import {
 export const metadata: Metadata = {
   title: "Two-Headed Giant rules",
   description:
-    "How Two-Headed Giant works: shared life totals, shared turns, and the deckbuilding rules for 2HG Commander, Constructed and Sealed.",
+    "How Two-Headed Giant works: shared life totals, shared turns, and the deckbuilding rules for 2HG Commander.",
 };
 
 /**
@@ -18,7 +18,18 @@ export const metadata: Metadata = {
  * rules the builder enforces and the rules we publish can't drift apart —
  * correct the data, not the prose.
  */
-const ORDER: FormatRules[] = [FORMATS.commander, FORMATS.constructed];
+/**
+ * Commander only, deliberately.
+ *
+ * 2HG Constructed is effectively dead as organised play, and printing its rules
+ * beside Commander's was doing real harm: its unified-deck rule is the single
+ * thing people wrongly believe applies to 2HG Commander, and showing both made
+ * that easier to believe, not harder.
+ *
+ * It stays in `FORMATS` — pairings saved as Constructed must keep validating
+ * against their own rules — it just isn't published here any more.
+ */
+const PUBLISHED: FormatRules[] = [FORMATS.commander];
 
 function StatRow({ label, value }: { label: string; value: string }) {
   return (
@@ -64,22 +75,22 @@ export default function RulesPage() {
 
       <section className="mt-14">
         <h2 className="text-xl font-semibold tracking-tight text-white">
-          Deckbuilding formats
+          The format you build for
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          These are the variants you build for at home. Both are supported by
+          2HG Commander is the variant you build a deck for at home, and the one
           the{" "}
           <Link
-            href="/team"
+            href="/deck-builder"
             className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
           >
-            team builder
-          </Link>
-          .
+            deck builder
+          </Link>{" "}
+          is built around.
         </p>
 
         <div className="mt-6 space-y-6">
-          {ORDER.map((format) => (
+          {PUBLISHED.map((format) => (
             <article
               key={format.id}
               className="rounded-2xl border border-white/10 bg-white/[0.02] p-6"
@@ -204,9 +215,10 @@ export default function RulesPage() {
           2HG Commander has <strong className="text-white">no unified deck
           rule</strong>. Wizards&apos; event rules say you may bring any legal
           Commander deck, so you and your teammate can both run Sol Ring — the
-          singleton rule applies to each deck, not to the team. The four-copies-
-          across-both-decks rule people remember belongs to 2HG{" "}
-          <em>Constructed</em>, which is a different format.
+          singleton rule applies to each deck, not to the team. The
+          four-copies-across-both-decks rule people remember is from a different
+          format entirely, and doesn&apos;t apply to anything you&apos;ll play
+          at a Commander Night.
         </p>
       </section>
 

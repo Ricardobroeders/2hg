@@ -11,6 +11,19 @@
  */
 html {
   color-scheme: dark;
+
+  /*
+   * Always reserve the scrollbar's width, whether or not the page is long
+   * enough to need one.
+   *
+   * Without this every navigation between a short page (/rules, an empty
+   * builder) and a long one (a 200-card pairing) shifts the entire layout
+   * sideways by the scrollbar's width. `scrollbar-gutter` rather than
+   * `overflow-y: scroll`: forcing overflow on the root moves the viewport's
+   * scroll container off `body`, which silently breaks the scroll lock the
+   * modal relies on.
+   */
+  scrollbar-gutter: stable;
 }
 
 body {
@@ -18,7 +31,7 @@ body {
   color: #e4e4e7;
 }
 
-/* Subtle scrollbars inside the deck columns. */
+/* Subtle scrollbars, in the deck columns and on the page itself. */
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;

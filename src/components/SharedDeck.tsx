@@ -1,12 +1,16 @@
-import Link from "next/link";
-import type { ScryfallCard } from "@/lib/scryfall";
+import { cardImage, type ScryfallCard } from "@/lib/scryfall";
 import type { Deck, DeckSlot } from "@/lib/team";
 import { scoreCard, tierColor } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
+import { CardLink } from "./CardLink";
 
 /**
- * Read-only deck view for a shared pairing. Server-rendered, so a link a
- * teammate opens is indexable and needs no client JS to read.
+ * Read-only deck view for a shared pairing.
+ *
+ * Still server-rendered — a link a teammate opens has to be indexable, and the
+ * names and scores are all in the HTML. Only the hover preview is a client
+ * component, and it takes its image URL as a prop, so nothing about reading the
+ * list depends on JS running.
  */
 export function SharedDeck({
   deck,
@@ -62,12 +66,14 @@ export function SharedDeck({
               <span className="w-6 shrink-0 text-right text-xs tabular-nums text-zinc-600">
                 {entry.quantity}
               </span>
-              <Link
-                href={`/cards/${toSlug(entry.name)}`}
-                className="min-w-0 flex-1 truncate text-sm text-zinc-300 hover:text-white"
-              >
-                {entry.name}
-              </Link>
+              <span className="min-w-0 flex-1 truncate">
+                <CardLink
+                  name={entry.name}
+                  href={`/cards/${toSlug(entry.name)}`}
+                  image={card ? cardImage(card, "normal") : null}
+                  className="text-sm text-zinc-300 hover:text-white"
+                />
+              </span>
               {score && (
                 <span
                   className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium tabular-nums ring-1 ring-inset ${tierColor(
