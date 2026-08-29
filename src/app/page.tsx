@@ -48,17 +48,17 @@ export default async function HomePage() {
         />
         <div className="relative mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-28">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">
-            Magic: The Gathering · Two-Headed Giant
+            Magic: The Gathering · Two-Headed Giant · EDH
           </p>
           <h1 className="mt-4 text-balance text-4xl font-bold tracking-tight text-white sm:text-5xl">
-            The format where{" "}
-            <span className="text-emerald-400">every card reads differently</span>
+            If you can&rsquo;t beat them,{" "}
+            <span className="text-emerald-400">join them</span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-relaxed text-zinc-400">
-            Shared life. Shared turns. Two opponents. 2HG changes what a card is
-            worth, and no existing database models it. This one does — card
-            ratings, team synergy and a builder that validates both decks as a
-            single unit.
+            Shared life. Shared turns. Two opponents. Two Headed Giant (2HG)
+            changes what a card is worth, and no existing database models it.
+            This one does — card ratings, team synergy and a builder that
+            validates both decks as a single unit.
           </p>
 
           <div className="mx-auto mt-9 max-w-xl">
