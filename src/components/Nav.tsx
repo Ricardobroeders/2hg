@@ -21,13 +21,19 @@ export function Nav() {
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-zinc-950/80 backdrop-blur">
       <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-emerald-400 to-sky-500 text-sm font-black text-zinc-950">
-            2H
-          </span>
-          <span className="hidden text-sm font-semibold tracking-tight text-white sm:block">
-            Two-Headed Giant
-          </span>
+        <Link href="/" className="flex shrink-0 items-center" aria-label="Two-Headed Giant — home">
+          {/* Plain <img>: the logo is a fixed-size wordmark, so there's nothing
+              for next/image to optimise, and SVG through it needs
+              dangerouslyAllowSVG. Intrinsic width/height are set so the header
+              doesn't shift while it loads. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/2hg-logo.svg"
+            alt="Two-Headed Giant"
+            width={393}
+            height={139}
+            className="h-7 w-auto sm:h-8"
+          />
         </Link>
 
         <div className="hidden min-w-0 flex-1 md:block">
