@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
     "What Two-Headed Giant collects, why, where it is stored, and how to have it deleted.",
+  alternates: { canonical: "/privacy" },
+  openGraph: { url: "/privacy" },
 };
 
 export default function PrivacyPage() {

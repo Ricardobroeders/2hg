@@ -2,7 +2,7 @@
  * The 2HG Rating engine.
  *
  * Two-Headed Giant changes card valuations in ways no generic MTG database
- * models: a team shares a 30-life pool and a single turn, and every "each
+ * models: a team shares one life total and a single turn, and every "each
  * opponent" clause resolves twice. This module turns those structural facts
  * into a transparent, explainable score.
  *
@@ -12,6 +12,15 @@
  */
 
 import { oracleText, type ScryfallCard } from "./scryfall";
+import { FORMATS } from "./team";
+
+/**
+ * 2HG Commander is the default format everywhere on the site, so the prose we
+ * publish quotes its life total. Derived, never retyped: `team.ts` is the single
+ * source of truth, and these strings are user-visible on every card page — an
+ * earlier version of this file said 30, which is the Constructed number.
+ */
+const SHARED_LIFE = FORMATS.commander.startingLife;
 
 export type RuleImpact = "up" | "down";
 
@@ -132,7 +141,7 @@ export const RULES: Rule[] = [
     id: "aoe-damage",
     label: "Damage to each opponent",
     reason:
-      "Drain and burn that reads 'each opponent' comes off one shared 30-life total, so the printed number doubles.",
+      `Drain and burn that reads 'each opponent' comes off one shared ${SHARED_LIFE}-life total, so the printed number doubles.`,
     impact: "up",
     weight: 14,
     test: ({ has }) =>
@@ -214,7 +223,7 @@ export const RULES: Rule[] = [
     id: "lifegain",
     label: "Incremental lifegain",
     reason:
-      "30 shared life is a bigger pool than 20, so small lifegain is proportionally weaker — and it's the same pool your teammate is spending.",
+      `${SHARED_LIFE} shared life is a bigger pool than 20, so small lifegain is proportionally weaker — and it's the same pool your teammate is spending.`,
     impact: "down",
     weight: 5,
     test: ({ has }) =>

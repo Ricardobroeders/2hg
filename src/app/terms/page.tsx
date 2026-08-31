@@ -6,6 +6,8 @@ export const metadata: Metadata = {
   title: "Terms of Service",
   description:
     "The terms for using Two-Headed Giant, including what our card ratings are and are not.",
+  alternates: { canonical: "/terms" },
+  openGraph: { url: "/terms" },
 };
 
 export default function TermsPage() {

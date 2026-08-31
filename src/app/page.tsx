@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { searchCards } from "@/lib/scryfall";
 import { scoreCard } from "@/lib/twohg-score";
+import { FORMATS } from "@/lib/team";
+import { JsonLd, webSiteSchema } from "@/components/JsonLd";
+import type { Metadata } from "next";
 import { CardSearch } from "@/components/CardSearch";
 import { CardTile } from "@/components/CardTile";
 
@@ -8,26 +11,39 @@ import { CardTile } from "@/components/CardTile";
  * Shelves are curated Scryfall queries rather than hand-written card lists, so
  * the front page stays current as new sets legalise new "each opponent" cards.
  */
+/**
+ * Each shelf's "see all" goes to its rule hub rather than a `/cards?q=…` URL.
+ * Same cards, but an indexable destination — and it stops funnelling crawlers
+ * into a search space that is query x colour x sort x page.
+ */
 const SHELVES = [
   {
+    hub: "each-opponent",
     title: "Doubled by two opponents",
     blurb:
-      "Every 'each opponent' clause resolves twice against one shared 30-life pool. These are the cards that quietly double in power.",
+      `Every 'each opponent' clause resolves twice against one shared ${FORMATS.commander.startingLife}-life pool. These are the cards that quietly double in power.`,
     query: 'oracle:"each opponent" -type:land legal:commander',
   },
   {
+    hub: "sweeper",
     title: "Two boards, one card",
     blurb:
       "You're answering two developed battlefields. Sweepers are premium removal here, not a last resort.",
     query: 'oracle:"destroy all creatures" legal:commander',
   },
   {
+    hub: "extra-turn",
     title: "Shared turns, doubled tempo",
     blurb:
       "Teammates take one turn together, so an extra turn is an extra turn for both players.",
     query: 'oracle:"take an extra turn" legal:commander',
   },
 ] as const;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { url: "/" },
+};
 
 export default async function HomePage() {
   const shelves = await Promise.all(
@@ -41,6 +57,7 @@ export default async function HomePage() {
 
   return (
     <div>
+      <JsonLd data={webSiteSchema()} />
       <section className="relative overflow-hidden border-b border-white/10">
         <div
           aria-hidden
@@ -73,7 +90,7 @@ export default async function HomePage() {
               Build a team pairing
             </Link>
             <Link
-              href="/cards?q=oracle%3A%22each+opponent%22+-type%3Aland"
+              href="/lists/each-opponent"
               className="rounded-lg px-4 py-2.5 text-zinc-300 ring-1 ring-inset ring-white/15 transition hover:bg-white/5 hover:text-white"
             >
               Browse the format staples
@@ -93,9 +110,14 @@ export default async function HomePage() {
                   body: `${topCard.name} scores this high because its drain hits each opponent — off one shared life total, the printed number effectively doubles.`,
                 },
                 {
-                  stat: "4 combined",
-                  label: "Unified deck rule",
-                  body: "A team may run four copies of a card across both decks — not four each. Our builder validates Deck A and Deck B together, so illegal pairings surface while you build.",
+                  // The stat this replaced asserted a unified deck rule for 2HG
+                  // Commander. There isn't one — `FORMATS.commander` says so
+                  // (`maxCombinedCopies: null`) and /rules has a whole section
+                  // debunking it. Contradicting our own rules page on the home
+                  // page is the last thing a site claiming 2HG authority can do.
+                  stat: "No shared limit",
+                  label: "Singleton is per deck",
+                  body: "2HG Commander has no unified deck rule — you and your teammate may both run Sol Ring. The builder checks each deck against the real format rules, not Constructed's.",
                 },
                 {
                   stat: "1 click",
@@ -133,7 +155,7 @@ export default async function HomePage() {
                 </p>
               </div>
               <Link
-                href={`/cards?q=${encodeURIComponent(shelf.query)}`}
+                href={`/lists/${shelf.hub}`}
                 className="shrink-0 text-sm text-emerald-400 hover:text-emerald-300"
               >
                 See all →

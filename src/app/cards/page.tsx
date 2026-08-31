@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { listHubs } from "@/lib/lists";
 import { searchCards } from "@/lib/scryfall";
 import { scoreCard } from "@/lib/twohg-score";
 import { CardTile } from "@/components/CardTile";
@@ -10,7 +12,29 @@ import {
   toggleColor,
 } from "@/lib/colors";
 
-export const metadata = { title: "Card search" };
+const DESCRIPTION =
+  "Search every Magic card by its 2HG Rating. Filter by colour, mana value and price to find the cards that gain the most from shared life and shared turns.";
+
+export async function generateMetadata({
+  searchParams,
+}: PageProps<"/cards">): Promise<Metadata> {
+  const params = await searchParams;
+  const filtered = Boolean(params.q || params.colors || params.page || params.sort);
+
+  return {
+    title: "Card search",
+    description: DESCRIPTION,
+    /**
+     * Query x six colour chips x four sorts x page is an unbounded crawl space
+     * of the same cards in a different order. Index the bare hub only; the
+     * filtered views still pass their links through, which is how a crawler
+     * reaches individual card pages from here.
+     */
+    robots: filtered ? { index: false, follow: true } : undefined,
+    alternates: filtered ? undefined : { canonical: "/cards" },
+    openGraph: filtered ? undefined : { url: "/cards" },
+  };
+}
 
 /** Shortcuts that translate a 2HG concept into a Scryfall query. */
 const PRESETS = [
@@ -177,6 +201,41 @@ export default async function CardsPage({
           — <span className="font-mono text-zinc-300">oracle:&quot;each opponent&quot; cmc&lt;=3</span>{" "}
           works. Results are re-ranked by their 2HG Rating.
         </p>
+      )}
+
+      {/* Without this the page renders no card links at all until someone types
+          a query, which left every card page orphaned. The hubs are the browse
+          surface, and unlike a preset query they're indexable in their own right. */}
+      {!result && (
+        <section className="mt-10">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 className="text-lg font-semibold text-white">Browse by what 2HG changes</h2>
+            <Link href="/lists" className="shrink-0 text-sm text-emerald-400 hover:text-emerald-300">
+              All lists →
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {listHubs()
+              .filter((hub) => hub.indexable)
+              .map((hub) => (
+                <Link
+                  key={hub.id}
+                  href={`/lists/${hub.id}`}
+                  className="rounded-xl border border-white/10 bg-white/[0.02] p-4 transition hover:border-white/25 hover:bg-white/[0.04]"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <h3 className="text-sm font-medium text-white">{hub.heading}</h3>
+                    <span className="shrink-0 text-xs tabular-nums text-zinc-500">
+                      {hub.cardCount}
+                    </span>
+                  </div>
+                  <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-zinc-400">
+                    {hub.rule.reason}
+                  </p>
+                </Link>
+              ))}
+          </div>
+        </section>
       )}
 
       {result && (

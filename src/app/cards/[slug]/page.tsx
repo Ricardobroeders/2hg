@@ -1,37 +1,81 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { cardImage, getCardByFuzzyName, oracleText } from "@/lib/scryfall";
+import { cardImage, oracleText } from "@/lib/scryfall";
+import { resolveCardBySlug } from "@/lib/cards";
+import { prerenderSlugs } from "@/lib/corpus";
 import { scoreCard } from "@/lib/twohg-score";
 import { synergyFor } from "@/lib/synergy";
-import { fromSlug, toSlug } from "@/lib/slug";
+import { FORMATS } from "@/lib/team";
+import { JsonLd, breadcrumbSchema } from "@/components/JsonLd";
 import { ScoreBadge, ScoreMeter } from "@/components/ScoreBadge";
 import { AffiliateButtons } from "@/components/AffiliateButtons";
 import { AddToTeam } from "@/components/AddToTeam";
 import { CardTile } from "@/components/CardTile";
 import { ManaCost, ManaText } from "@/components/ManaSymbols";
 
+/**
+ * Corpus cards get a prerendered head slice; everything else is ISR'd on first
+ * request. `dynamicParams` is stated rather than left to default so nobody
+ * "tidies" it away — turning it off would 404 every card outside the slice.
+ */
+export const dynamicParams = true;
+export const revalidate = 86400;
+
+export function generateStaticParams(): { slug: string }[] {
+  return prerenderSlugs().map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({
   params,
 }: PageProps<"/cards/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const card = await getCardByFuzzyName(fromSlug(slug));
-  if (!card) return { title: "Card not found" };
+  const resolved = await resolveCardBySlug(slug);
+  if (!resolved) {
+    return { title: "Card not found", robots: { index: false, follow: false } };
+  }
 
+  const { card, canonicalSlug } = resolved;
   const score = scoreCard(card);
+  // Always canonicalise to the slug the card's own name produces, never to the
+  // slug that was requested — many spellings reach the same card, and each one
+  // would otherwise be its own indexable URL.
+  const canonical = `/cards/${canonicalSlug}`;
+  const image = cardImage(card, "normal");
+
   return {
     title: `${card.name} in Two-Headed Giant`,
     description: `${card.name} scores ${score.score}/100 in 2HG. ${score.summary}`,
+    alternates: { canonical },
+    /**
+     * The thin-content guard.
+     *
+     * No matched rules means this page says nothing about 2HG that Scryfall
+     * doesn't already say better — roughly four in five Commander-legal cards.
+     * Keeping them out of the sitemap isn't enough on its own: they're linked
+     * from search results, the home shelves and the synergy rails, so a crawler
+     * finds them anyway. `follow` stays on so those links still carry weight.
+     */
+    robots:
+      score.matched.length === 0 ? { index: false, follow: true } : undefined,
     openGraph: {
-      images: cardImage(card, "normal") ? [cardImage(card, "normal")!] : [],
+      type: "article",
+      url: canonical,
+      images: image ? [image] : [],
     },
   };
 }
 
 export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
   const { slug } = await params;
-  const card = await getCardByFuzzyName(fromSlug(slug));
-  if (!card) notFound();
+  const resolved = await resolveCardBySlug(slug);
+  if (!resolved) notFound();
+
+  // One card, one URL. A canonical tag alone leaves every lossy spelling live
+  // and crawlable; a 308 collapses them — but only where the destination
+  // provably resolves back here (see `resolveCardBySlug`).
+  const { card, canonicalSlug } = resolved;
+  if (resolved.canRedirect) permanentRedirect(`/cards/${canonicalSlug}`);
 
   const score = scoreCard(card);
   const synergy = await synergyFor(card);
@@ -41,6 +85,12 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      <JsonLd
+        data={breadcrumbSchema([
+          { name: "Cards", path: "/cards" },
+          { name: card.name, path: `/cards/${canonicalSlug}` },
+        ])}
+      />
       <div className="grid gap-10 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         {/* Card art + buy rail */}
         <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
@@ -115,9 +165,15 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
                       {m.weight}
                     </span>
                     <div>
-                      <p className="text-sm font-medium text-zinc-200">
+                      {/* Each matched rule links to its list. This is what
+                          connects a card page to every other card that shares
+                          its 2HG axis — and the crawl path in both directions. */}
+                      <Link
+                        href={`/lists/${m.id}`}
+                        className="text-sm font-medium text-zinc-200 underline decoration-white/20 underline-offset-4 hover:text-white hover:decoration-white/50"
+                      >
                         {m.label}
-                      </p>
+                      </Link>
                       <p className="mt-0.5 text-sm leading-relaxed text-zinc-400">
                         {m.reason}
                       </p>
@@ -134,8 +190,8 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
 
             <p className="mt-6 border-t border-white/10 pt-4 text-xs leading-relaxed text-zinc-600">
               Ratings start at a neutral 50 and are adjusted by rules derived
-              from 2HG&apos;s structure — shared 30 life, shared turns, two
-              opponents. They&apos;ll be recalibrated against real play rates
+              from 2HG&apos;s structure — shared {FORMATS.commander.startingLife}{" "}
+              life, shared turns, two opponents. They&apos;ll be recalibrated against real play rates
               once teams start submitting decklists.
             </p>
           </section>
@@ -223,14 +279,6 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
             >
               View {card.name} on Scryfall ↗
             </a>
-            {card.name !== fromSlug(slug) && (
-              <>
-                {" · "}
-                <Link href={`/cards/${toSlug(card.name)}`} className="hover:text-zinc-400">
-                  Canonical URL
-                </Link>
-              </>
-            )}
           </p>
         </div>
       </div>

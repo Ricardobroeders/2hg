@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DatabaseNotConfiguredError } from "@/lib/db";
 import { getTeamBySlug, recordView } from "@/lib/db/teams";
+import { isCrawler } from "@/lib/crawler";
 import { getCardsByNames } from "@/lib/scryfall";
 import { FORMATS } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
@@ -31,11 +32,14 @@ export async function generateMetadata(
   const { team } = stored;
   const commanders = team.a.commanders;
 
+  const canonical = `/d/${slug}`;
   return {
     title: team.name,
     description: commanders.length
       ? `A ${FORMATS[team.format].label} deck led by ${commanders.join(" and ")}, rated for Two-Headed Giant.`
       : `A ${FORMATS[team.format].label} deck rated for Two-Headed Giant.`,
+    alternates: { canonical },
+    openGraph: { url: canonical },
   };
 }
 
@@ -69,7 +73,9 @@ export default async function SharedDeckPage(props: PageProps<"/d/[slug]">) {
     ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
     : null;
 
-  void recordView(slug);
+  // Counting the view shouldn't hold up the render, and a crawler isn't a
+  // visitor — these pages are indexed, so bots would otherwise dominate the count.
+  if (!(await isCrawler())) void recordView(slug);
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6">

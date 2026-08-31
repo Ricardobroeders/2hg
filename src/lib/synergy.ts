@@ -39,9 +39,14 @@ export async function synergyFor(card: ScryfallCard): Promise<SynergyPick[]> {
     ? `id<=${card.color_identity.join("")}`
     : "id<=c";
 
+  // The card is excluded in JS rather than with `-name:"..."` in the query.
+  // Putting the name in the query made every card's search string unique, so
+  // nothing ever shared a cache entry — one live Scryfall search per card page,
+  // forever. Without it the whole site draws on roughly (11 axes x 32 colour
+  // identities) distinct queries, all of which hit the Next data cache.
   const query = axis
-    ? `${AXIS_QUERIES[axis.id]} ${identity} -name:"${card.name}" legal:commander`
-    : `${identity} -name:"${card.name}" legal:commander -type:land`;
+    ? `${AXIS_QUERIES[axis.id]} ${identity} legal:commander`
+    : `${identity} legal:commander -type:land`;
 
   const { cards } = await searchCards(query, { order: "edhrec" });
 
@@ -49,5 +54,8 @@ export async function synergyFor(card: ScryfallCard): Promise<SynergyPick[]> {
     ? `Shares the "${axis.label.toLowerCase()}" axis`
     : "Fits the same colour identity";
 
-  return cards.slice(0, 6).map((c) => ({ card: c, because }));
+  return cards
+    .filter((c) => c.oracle_id !== card.oracle_id)
+    .slice(0, 6)
+    .map((c) => ({ card: c, because }));
 }

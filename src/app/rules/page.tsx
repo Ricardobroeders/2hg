@@ -6,11 +6,14 @@ import {
   SHARED_RULES,
   type FormatRules,
 } from "@/lib/team";
+import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
 
 export const metadata: Metadata = {
   title: "Two-Headed Giant rules",
   description:
     "How Two-Headed Giant works: shared life totals, shared turns, and the deckbuilding rules for 2HG Commander.",
+  alternates: { canonical: "/rules" },
+  openGraph: { url: "/rules" },
 };
 
 /**
@@ -43,6 +46,10 @@ function StatRow({ label, value }: { label: string; value: string }) {
 export default function RulesPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      {/* SHARED_RULES is already a list of questions with answers, so the FAQ
+          markup renders from the same data as the prose below it. */}
+      <JsonLd data={faqSchema(SHARED_RULES)} />
+      <JsonLd data={breadcrumbSchema([{ name: "Rules", path: "/rules" }])} />
       <header>
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">
           Reference
