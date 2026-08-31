@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Footer } from "@/components/Footer";
 import { Nav } from "@/components/Nav";
 import { TeamProvider } from "@/lib/team-store";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
@@ -56,43 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <TeamProvider>
           <Nav />
           <main className="flex-1">{children}</main>
-          <footer className="border-t border-white/10 px-4 py-8 text-center text-xs leading-relaxed text-zinc-600 sm:px-6">
-            <p>
-              Card data and images courtesy of{" "}
-              <a
-                href="https://scryfall.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
-              >
-                Scryfall
-              </a>
-              . Not affiliated with or endorsed by Wizards of the Coast.
-            </p>
-            <p className="mt-1">
-              Buy links are affiliate links. Shared pairings are public to
-              anyone with the link.
-            </p>
-            {/* Linked from every page: Google's OAuth review checks that the
-                privacy policy is reachable from the page hosting sign-in. */}
-            <p className="mt-3 flex items-center justify-center gap-3">
-              <Link
-                href="/privacy"
-                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
-              >
-                Privacy
-              </Link>
-              <span aria-hidden="true" className="text-zinc-700">
-                ·
-              </span>
-              <Link
-                href="/terms"
-                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
-              >
-                Terms
-              </Link>
-            </p>
-          </footer>
+          <Footer />
         </TeamProvider>
       </body>
     </html>
