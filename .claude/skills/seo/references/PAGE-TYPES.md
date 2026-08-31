@@ -6,7 +6,7 @@ Every indexable route, what makes it unique, and whether it is advertised.
 | --- | --- | --- | --- | --- |
 | `/` | Static, 6h ISR | `/` | `WebSite` + `SearchAction` | Yes |
 | `/cards` | Dynamic (searchParams) | `/cards` when unfiltered, else none | — | Yes (bare only) |
-| `/cards/[slug]` | 100 prerendered, rest ISR 24h | `/cards/{toSlug(name)}` | `BreadcrumbList` | Only if it trips ≥1 rule |
+| `/cards/[slug]` | ISR 24h (no prerender by default) | `/cards/{toSlug(name)}` | `BreadcrumbList` | Only if it clears `meetsIndexBar` (~1,300) |
 | `/lists` | Static | `/lists` | `BreadcrumbList` | Yes |
 | `/lists/[rule]` | 18 prerendered, ISR 24h | `/lists/{id}` | `BreadcrumbList` | Only if ≥10 cards |
 | `/rules` | Static | `/rules` | `FAQPage` + `BreadcrumbList` | Yes |

@@ -21,10 +21,21 @@ These are the ones most likely to be broken by well-meaning future work.
 
 ### 1. Thin content never enters the sitemap — and carries `noindex`
 
-A page is advertised only if it says something unique. Roughly **82% of
-Commander-legal cards trip no 2HG rule at all** (5,620 of 30,784) and render
-"plays about the same in 2HG as it does in any other format". Those pages stay
-routable and useful; they are not indexed.
+A page is advertised only if it says something unique, and the bar is higher
+than it first looks. Of ~30,800 Commander-legal cards, 5,620 trip a 2HG rule at
+all — but those 5,620 pages are built from only **121 distinct rule-prose
+templates**, 86% of them match exactly one rule, and 931 share the identical
+`cheap-interaction` paragraph. Strip the shared prose and what's left is
+Scryfall's own text, which a dozen sites already publish.
+
+So the bar is `meetsIndexBar` in `src/lib/corpus.ts`: **two or more matched
+rules, or an EDHREC rank of 2,500 or better** — about 1,300 cards. Two rules is
+where the interaction between axes becomes ours rather than a template; a high
+rank earns a page on different grounds, being the only 2HG answer for something
+people actually search.
+
+Raise it back toward "any matched rule" only once card pages carry genuinely
+per-card prose — computed format math, not a shared paragraph.
 
 Sitemap exclusion alone is **not enough** — those pages are linked from search
 results, home shelves and synergy rails, so a crawler finds them regardless.

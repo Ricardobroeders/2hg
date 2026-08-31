@@ -35,14 +35,64 @@ export const CORPUS_UPDATED_AT = new Date(corpus.scryfallUpdatedAt);
 const BY_SLUG = new Map(CARDS.map((card) => [card.slug, card]));
 
 /**
- * Every card with something 2HG-specific to say — ~5,600 of Scryfall's ~30,800
- * Commander-legal cards, in descending popularity.
+ * The bar for advertising a card page, and the reason it is not just
+ * "trips at least one rule".
  *
- * This is also the sitemap's membership test. A card that isn't here still has
- * a working page; it just isn't advertised, because its page would only say
- * "plays about the same in 2HG as it does in any other format".
+ * Tripping one rule was the original test. Measured against the real corpus it
+ * was far too generous: 86% of these cards match exactly one rule, there are
+ * only **121 distinct rule combinations** behind 5,620 pages, the ten most
+ * common cover 80% of them, and 931 cards share the identical
+ * `cheap-interaction` paragraph. Strip the shared prose and what is left on
+ * such a page is Scryfall's own name, cost, type line and oracle text — the
+ * same bytes Scryfall, Moxfield, EDHREC and Gatherer already publish.
+ *
+ * Two rules is where a page starts saying something specific: the interaction
+ * between the axes is ours, not a template. A high EDHREC rank earns a page
+ * too, on different grounds — those are the cards people actually search for,
+ * where being the only 2HG answer is worth more than the prose being thin.
+ *
+ * Everything below the bar keeps a working, linked, useful page. It is served
+ * `noindex, follow`, so it just isn't offered to search. Quality assessments
+ * are site-wide: a few thousand near-identical pages drag down `/rules` and the
+ * hubs, which are the pages actually worth ranking.
+ *
+ * Raise this back toward "any matched rule" once card pages carry genuinely
+ * per-card prose — computed format math rather than a shared paragraph.
+ */
+const INDEX_MIN_RULES = 2;
+const INDEX_MAX_RANK = 2500;
+
+/**
+ * Shared by the sitemap and the card page's robots directive so the two can't
+ * drift. Takes the raw figures rather than a `CorpusCard` so a card page can
+ * apply it to a live `scoreCard()` result — a newly legal card then behaves
+ * correctly before the corpus has been rebuilt.
+ */
+export function meetsIndexBar(
+  matchedRuleCount: number,
+  edhrecRank: number | null,
+): boolean {
+  if (matchedRuleCount === 0) return false;
+  return (
+    matchedRuleCount >= INDEX_MIN_RULES ||
+    (edhrecRank !== null && edhrecRank <= INDEX_MAX_RANK)
+  );
+}
+
+/**
+ * The cards we advertise in the sitemap — about 1,300 of the ~5,600 that trip a
+ * rule. See `meetsIndexBar`.
  */
 export function indexableCards(): CorpusCard[] {
+  return CARDS.filter((card) => meetsIndexBar(card.rules.length, card.rank));
+}
+
+/**
+ * Every corpus card, advertised or not. The rule hubs list all of them: those
+ * links still carry weight (`follow`), and the browse surface shouldn't hide
+ * cards just because their page isn't worth offering to search.
+ */
+export function allCorpusCards(): CorpusCard[] {
   return CARDS;
 }
 

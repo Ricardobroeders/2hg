@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cardImage, oracleText } from "@/lib/scryfall";
 import { resolveCardBySlug } from "@/lib/cards";
-import { prerenderSlugs } from "@/lib/corpus";
+import { meetsIndexBar, prerenderSlugs } from "@/lib/corpus";
 import { scoreCard } from "@/lib/twohg-score";
 import { synergyFor } from "@/lib/synergy";
 import { FORMATS } from "@/lib/team";
@@ -48,16 +48,17 @@ export async function generateMetadata({
     description: `${card.name} scores ${score.score}/100 in 2HG. ${score.summary}`,
     alternates: { canonical },
     /**
-     * The thin-content guard.
+     * The thin-content guard, computed live so it holds for cards the corpus
+     * hasn't seen yet. `meetsIndexBar` is the same predicate the sitemap uses.
      *
-     * No matched rules means this page says nothing about 2HG that Scryfall
-     * doesn't already say better — roughly four in five Commander-legal cards.
-     * Keeping them out of the sitemap isn't enough on its own: they're linked
-     * from search results, the home shelves and the synergy rails, so a crawler
-     * finds them anyway. `follow` stays on so those links still carry weight.
+     * Keeping a page out of the sitemap isn't enough on its own: card pages are
+     * linked from search results, the home shelves, the rule hubs and the
+     * synergy rails, so a crawler finds them regardless. `follow` stays on so
+     * those links keep carrying weight.
      */
-    robots:
-      score.matched.length === 0 ? { index: false, follow: true } : undefined,
+    robots: meetsIndexBar(score.matched.length, card.edhrec_rank ?? null)
+      ? undefined
+      : { index: false, follow: true },
     openGraph: {
       type: "article",
       url: canonical,
