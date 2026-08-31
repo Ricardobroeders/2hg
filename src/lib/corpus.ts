@@ -53,17 +53,26 @@ export function corpusCard(slug: string): CorpusCard | undefined {
 /**
  * How many card pages `next build` prerenders.
  *
- * A build-time budget, not an SEO setting. The sitemap advertises all ~5,600
- * cards either way; this slice only decides which ones are already warm rather
- * than ISR-rendered on first request. Prerendering is Scryfall-bound, measured
- * at roughly **1.1s per card** — 300 cards put the build at 6.5 minutes, which
- * is a lot of deploy latency to buy first-paint on pages a crawler would warm
- * anyway. 100 keeps the genuinely popular cards hot at about a third of that.
+ * Off by default, and that is not a compromise.
  *
- * `CARD_PRERENDER_LIMIT=0` skips prerendering entirely, which is what you want
- * for a local build with no network.
+ * Indexation comes from the sitemap, which advertises all ~5,600 cards however
+ * this is set. Prerendering only decides which pages are already warm instead
+ * of ISR-rendered on first request — and every one costs two Scryfall round
+ * trips at build time.
+ *
+ * Measured, because the guesses were wrong twice: 300 cards failed the build
+ * outright (page-level 60s timeouts once workers started rate-limiting each
+ * other), and 100 cards on Vercel — three workers, cold data cache — was at
+ * 36 of 138 pages after three minutes, heading for eleven. The same build runs
+ * in five seconds locally with a warm cache, which is exactly why local timing
+ * is not evidence here.
+ *
+ * So: ship fast, deterministic builds and let the first visitor to each card
+ * pay ~1s once. Raise `CARD_PRERENDER_LIMIT` later if you want the popular
+ * cards warm — later builds are cheap because Vercel persists the data cache
+ * between deploys, so the Scryfall calls are already paid for.
  */
-const PRERENDER_LIMIT = Number(process.env.CARD_PRERENDER_LIMIT ?? 100);
+const PRERENDER_LIMIT = Number(process.env.CARD_PRERENDER_LIMIT ?? 0);
 
 export function prerenderSlugs(limit = PRERENDER_LIMIT): string[] {
   return CARDS.slice(0, Math.max(0, limit)).map((card) => card.slug);
