@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useScrollLock } from "@/lib/use-scroll-lock";
 
 /**
  * The one modal in the app.
@@ -26,6 +27,9 @@ export function Modal({
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreTo = useRef<HTMLElement | null>(null);
 
+  // The page behind must not scroll while the dialog owns the viewport.
+  useScrollLock(true);
+
   useEffect(() => {
     restoreTo.current = document.activeElement as HTMLElement | null;
 
@@ -44,25 +48,8 @@ export function Modal({
     }
     document.addEventListener("keydown", onKeyDown);
 
-    // The page behind must not scroll while the dialog owns the viewport.
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    const previousPadding = body.style.paddingRight;
-
-    // Locking can reclaim the scrollbar's width and jolt the page sideways —
-    // the exact shift `scrollbar-gutter: stable` exists to prevent everywhere
-    // else. Measure what locking actually took rather than assuming: if the
-    // gutter survives the lock the delta is 0 and nothing is padded, so this
-    // can't over-correct.
-    const widthBefore = document.documentElement.clientWidth;
-    body.style.overflow = "hidden";
-    const reclaimed = document.documentElement.clientWidth - widthBefore;
-    if (reclaimed > 0) body.style.paddingRight = `${reclaimed}px`;
-
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      body.style.overflow = previousOverflow;
-      body.style.paddingRight = previousPadding;
       restoreTo.current?.focus?.();
     };
   }, [onClose]);
