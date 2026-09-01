@@ -105,10 +105,14 @@ export const resolveCardBySlug = cache(
  */
 export const getCardsByNamesCached = unstable_cache(
   async (names: string[]): Promise<ScryfallCard[]> => getCardsByNames(names),
-  // v2 abandons the entries written while a partial hydration could be
-  // cached; Vercel's Data Cache survives deployments, so a poisoned key
-  // outlives the fix that stopped it being written.
-  ["scryfall-cards-by-names", "v2"],
+  /**
+   * Bump this whenever a change alters what a cached entry means. Vercel's
+   * Data Cache survives deployments, so a bad entry outlives the fix for it.
+   * v2 abandoned entries written while a partial hydration could be cached;
+   * v3, those written while the inner POST still declared `no-store` inside
+   * this cache scope and intermittently failed.
+   */
+  ["scryfall-cards-by-names", "v3"],
   { revalidate: 86400 },
 );
 
