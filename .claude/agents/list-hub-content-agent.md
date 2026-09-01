@@ -275,7 +275,7 @@ question list (a question with no research provenance is a fail); every `body`
 is **40–60 words**, reported per entry; no two questions are paraphrases; no
 humor.
 
-**Style checks:** banned-phrase grep from `VOICE.md`; no sentence over ~35 words;
+**Style checks:** banned-phrase grep from `VOICE.md`; no sentence over 28 words;
 at most one humor aside on the page and none in an FAQ, H2, meta or opening
 sentence (`HUMOR.md`); every number classified per `STATS.md` as corpus-exact,
 `FORMATS`-derived, or `sources[]`-backed.
