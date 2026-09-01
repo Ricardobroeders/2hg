@@ -127,6 +127,8 @@ export const getCardsByNamesCached = unstable_cache(
  *    partial — but the next visitor retries Scryfall rather than inheriting
  *    this.
  */
+export let lastHydrationError = ""; // TEMP
+
 export async function hydrateDecklist(
   names: string[],
 ): Promise<ScryfallCard[]> {
@@ -139,6 +141,7 @@ export async function hydrateDecklist(
       `hydrateDecklist: Scryfall unavailable for ${names.length} names, falling back to the committed artifact`,
       error,
     );
+    lastHydrationError = `${String(error)} | names=${names.length}`; // TEMP
     return names
       .map((name) => cardDetailByName(name))
       .filter((detail) => detail != null)
