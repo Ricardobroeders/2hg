@@ -52,9 +52,31 @@ in `src/lib/team.ts`, `src/app/rules/page.tsx` and `SHELVES` in
   forced.
 - **Card names exactly as Scryfall prints them.** Front face in prose; the full
   `A // B` name in a `cards` array.
-- **User-facing copy uses neutral spelling.** Code comments in this repo are
-  British ("colour", "normalise") — prose is not. Prefer words with no US/UK
-  split; where forced, match `/rules`.
+- **User-facing copy is spelling-neutral, with one carve-out.** Code comments in
+  this repo are British ("colour", "normalise"); prose is neither.
+
+  **Magic game terms keep the spelling Wizards prints**, which is American:
+  *color identity*, *colorless*, *color pie*. These are proper nouns of the
+  game, not word choices, and Scryfall data uses them too — "colour identity"
+  would look like a typo next to the card text.
+
+  **Everywhere else, route around the split words.** The ones that come up in
+  MTG writing: colour/color, defence/defense, analyse/analyze,
+  favourite/favorite, behaviour/behavior, centre/center. Each has a natural
+  escape:
+
+  | Instead of | Write |
+  | --- | --- |
+  | the colours/colors it can cast | what it can cast |
+  | your defence/defense | your blockers, your answers |
+  | analyse/analyze the list | read the list, work it out |
+  | favourite/favorite | the one most people run |
+
+  The exception stands: if you mean the game term *color identity*, write it
+  American and move on.
+
+  If a sentence genuinely cannot avoid a split word and it is not a game term,
+  rewrite the sentence. Do not mix both spellings on one page.
 
 ## Headings
 
@@ -75,6 +97,13 @@ ones that told them something unwelcome. So:
 
 - **Every long page carries a counter-case section** — the trap, the
   overstatement, the cards in this list that are worse than they look.
+- **Mechanism first, verdict second.** Explain what actually happens, and let
+  the negative conclusion arrive as the obvious consequence. Not *"Group hug is
+  bad in 2HG. Shared draw feeds two opponents…"* but *"Shared draw feeds two
+  opponents and only one teammate. Every symmetrical card hands the other team
+  twice what it hands yours — which is why these read well and play badly."*
+  The verdict is the same; earning it reads as analysis rather than a ruling,
+  and a reader who disagrees has to argue with the mechanism.
 - **Undersell before you oversell.** *"Doubling a number is not the same as
   halving the game."*
 - **Name the limit in the same breath as the claim.** The existing copy does

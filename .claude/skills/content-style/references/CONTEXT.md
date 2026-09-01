@@ -19,6 +19,12 @@ Assume they know Magic. Assume they know Commander. Do **not** assume they know
 2HG — the format changes enough that experienced players get it wrong, and the
 site exists because of that gap.
 
+Concretely: **do not gloss Commander vocabulary.** Wrath, edict, stax, extort,
+aristocrats, group hug, spot removal and tutor all go unexplained. The only
+thing a page explains is what 2HG does differently. A gloss costs six words,
+signals the wrong audience, and the reader who needed it was not searching for
+"best sweepers two headed giant".
+
 Secondary: cEDH-adjacent players who tune decks seriously and are the natural
 converts, and players walking into a prerelease 2HG Sealed event who will never
 build a deck but do want to know what the format does to a card.
