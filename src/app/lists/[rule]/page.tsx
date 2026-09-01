@@ -6,7 +6,7 @@ import { cardsForRule, CORPUS_UPDATED_AT } from "@/lib/corpus";
 import { hubById, listHubs, relatedHubs } from "@/lib/lists";
 import { toSlug } from "@/lib/slug";
 import { CardTile } from "@/components/CardTile";
-import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { JsonLd, breadcrumbSchema, collectionSchema, faqSchema } from "@/components/JsonLd";
 
 /** 18 known rules; anything else is genuinely not a page. */
 export const dynamicParams = false;
@@ -58,6 +58,13 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
     .map((card) => byName.get(card.name))
     .filter((card) => card != null);
 
+  // Exactly what the grid renders, in order — featured minus anything that
+  // failed to hydrate. This is what the ItemList enumerates, so the markup and
+  // the DOM cannot disagree.
+  const listed = featured
+    .filter((card) => byName.has(card.name))
+    .map((card) => ({ name: card.name, path: `/cards/${card.slug}` }));
+
   const rest = ranked.slice(SHOWN, LISTED);
   const siblings = relatedHubs(hub);
 
@@ -83,14 +90,26 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
         ])}
       />
       {/*
-        FAQPage ships for AI answer engines, not for a rich result — Google
-        restricted those to government and health sites in August 2023 and this
-        will never render an accordion for us. It is worth shipping anyway
-        because it renders from the same array as the visible prose below, so
-        the markup cannot drift from the page. Indexable hubs only: marking up a
-        page we are asking Google not to index is noise.
+        FAQPage ships for AI answer engines, never for a rich result. Google
+        restricted those to government and health sites in August 2023 and
+        deprecated them outright on 7 May 2026, so this will not render anything
+        in Google Search — but the markup stays valid and Bingbot, PerplexityBot
+        and the RAG crawlers still read it. It is cheap to keep because it
+        renders from the same array as the visible answers below, so the markup
+        cannot drift from the page. Indexable hubs only: marking up a page we
+        are asking Google not to index is noise.
       */}
       {hub.indexable && faq.length > 0 && <JsonLd data={faqSchema(faq)} />}
+      {hub.indexable && listed.length > 0 && (
+        <JsonLd
+          data={collectionSchema({
+            name: hub.heading,
+            description: hub.description,
+            path: `/lists/${hub.id}`,
+            items: listed,
+          })}
+        />
+      )}
 
       <header className="max-w-3xl">
         <Link
@@ -237,16 +256,43 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
           <h2 className="text-xl font-semibold tracking-tight text-white">
             Common questions
           </h2>
-          <dl className="mt-5 space-y-5">
-            {faq.map((entry) => (
-              <div key={entry.title}>
-                <dt className="text-sm font-semibold text-white">{entry.title}</dt>
-                <dd className="mt-1 text-sm leading-relaxed text-zinc-400">
+          <div className="mt-5 divide-y divide-white/10 border-y border-white/10">
+            {faq.map((entry, i) => (
+              <details
+                key={entry.title}
+                /*
+                  Native <details>: no client component, no JS, and the answer
+                  ships in the HTML either way. The first one stays open —
+                  collapsed content is indexed, but Google is on record that
+                  visible text carries more weight than content behind an
+                  interaction, so the page keeps one answer in plain view.
+                */
+                open={i === 0}
+                className="group py-3"
+              >
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-4 text-sm font-semibold text-white transition hover:text-emerald-300 [&::-webkit-details-marker]:hidden">
+                  {entry.title}
+                  <svg
+                    aria-hidden
+                    viewBox="0 0 20 20"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-180"
+                  >
+                    <path
+                      d="m6 8 4 4 4-4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </summary>
+                <p className="mt-2 pr-8 text-sm leading-relaxed text-zinc-400">
                   {entry.body}
-                </dd>
-              </div>
+                </p>
+              </details>
             ))}
-          </dl>
+          </div>
         </section>
       )}
 

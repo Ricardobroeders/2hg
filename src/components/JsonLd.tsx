@@ -65,3 +65,47 @@ export function faqSchema(entries: readonly { title: string; body: string }[]) {
     })),
   };
 }
+
+/**
+ * A curated list page: what the collection is, and the items on it.
+ *
+ * `itemListElement` must contain exactly the items the page renders, and
+ * `numberOfItems` must equal its length — never the total that matched the
+ * rule. A hub lists 60 cards out of a thousand-odd matches, and markup claiming
+ * the larger number would contradict the count printed on the page.
+ *
+ * No rich result rides on this. It ships because it states the page's type and
+ * contents in a form answer engines and RAG crawlers read directly, which is
+ * the same reason `faqSchema` ships.
+ */
+export function collectionSchema({
+  name,
+  description,
+  path,
+  items,
+}: {
+  name: string;
+  description: string;
+  path: string;
+  items: readonly { name: string; path: string }[];
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name,
+    description,
+    url: absoluteUrl(path),
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: items.length,
+      // Ranked by the 2HG Rating, best first.
+      itemListOrder: "https://schema.org/ItemListOrderDescending",
+      itemListElement: items.map((item, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        name: item.name,
+        url: absoluteUrl(item.path),
+      })),
+    },
+  };
+}
