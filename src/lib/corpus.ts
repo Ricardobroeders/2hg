@@ -8,9 +8,15 @@
  *
  * The corpus is an **index, not a cache**: the scores in it decide which URLs
  * we advertise and how lists are ordered, and nothing more. Every score a user
- * actually sees is computed live by `scoreCard()` against fresh Scryfall data,
- * so a stale artifact can misfile a card in a hub — it can never show anyone a
- * stale number. Rebuild with `npm run seo:corpus`.
+ * actually sees is still computed by `scoreCard()` rather than read from here.
+ * A stale corpus can therefore misfile a card in a hub; it cannot make a card
+ * page disagree with itself. Rebuild with `npm run seo:corpus`.
+ *
+ * What that computation runs *against* changed on 2026-09-01. Card pages used
+ * to score live Scryfall data; they now score the oracle text committed in
+ * `./card-details`, because fetching it live was making pages hang for 30–90s.
+ * So the freshness guarantee is now the artifact's, not the network's — see
+ * the docblock there for what that does and doesn't cover.
  */
 
 import corpus from "@/data/card-corpus.json";

@@ -8,7 +8,11 @@
  * replaces the query below.
  */
 
-import { searchCards, type ScryfallCard } from "./scryfall";
+import {
+  OPTIONAL_DEADLINE_MS,
+  searchCards,
+  type ScryfallCard,
+} from "./scryfall";
 import { scoreCard } from "./twohg-score";
 
 /** Maps a 2HG rule to the Scryfall shape of cards that play alongside it. */
@@ -48,7 +52,22 @@ export async function synergyFor(card: ScryfallCard): Promise<SynergyPick[]> {
     ? `${AXIS_QUERIES[axis.id]} ${identity} legal:commander`
     : `${identity} legal:commander -type:land`;
 
-  const { cards } = await searchCards(query, { order: "edhrec" });
+  /**
+   * A suggestion rail is never worth a broken page, so *every* failure here
+   * degrades to no rail — a timeout, a 429 that outlived its retries, a 5xx.
+   * These are the widest queries the site issues (`id<=wu legal:commander`
+   * matches thousands of cards) and they used to be awaited before any of the
+   * card page rendered. The card's own content is local now; this is an
+   * enhancement arriving beside it, and an enhancement that throws should
+   * simply not appear.
+   */
+  const cards = await searchCards(query, {
+    order: "edhrec",
+    deadlineMs: OPTIONAL_DEADLINE_MS,
+  }).then(
+    (result) => result.cards,
+    () => [],
+  );
 
   const because = axis
     ? `Shares the "${axis.label.toLowerCase()}" axis`

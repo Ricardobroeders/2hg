@@ -8,6 +8,7 @@ import {
 } from "./scryfall";
 import { fromSlug, toSlug } from "./slug";
 import { corpusCard } from "./corpus";
+import { cardDetail, detailToCard } from "./card-details";
 
 export type ResolvedCard = {
   card: ScryfallCard;
@@ -15,6 +16,12 @@ export type ResolvedCard = {
   canonicalSlug: string;
   /** True only when redirecting to `canonicalSlug` is provably terminal. */
   canRedirect: boolean;
+  /**
+   * Whether this came from the committed details artifact rather than the
+   * network. The card page reads it to decide if it still owes the visitor a
+   * live price lookup — an artifact card carries no prices by design.
+   */
+  fromArtifact: boolean;
 };
 
 /**
@@ -30,6 +37,26 @@ export type ResolvedCard = {
  */
 export const resolveCardBySlug = cache(
   async (slug: string): Promise<ResolvedCard | null> => {
+    /**
+     * The fast path, and the reason card pages stopped hanging.
+     *
+     * A hit here is by definition already canonical — details are keyed by
+     * `toSlug(card.name)`, the same function that produces `canonicalSlug` —
+     * so there is nothing to redirect to and no reason to ask Scryfall. Every
+     * other slug (a lossy spelling, or a card that trips no 2HG rule and so
+     * isn't in the artifact) falls through to the live path below, which still
+     * owns all of the canonicalisation logic.
+     */
+    const detail = cardDetail(slug);
+    if (detail) {
+      return {
+        card: detailToCard(detail),
+        canonicalSlug: detail.slug,
+        canRedirect: false,
+        fromArtifact: true,
+      };
+    }
+
     const known = corpusCard(slug);
     const card = known
       ? await getCardByExactName(known.name)
@@ -38,7 +65,7 @@ export const resolveCardBySlug = cache(
 
     const canonicalSlug = toSlug(card.name);
     if (canonicalSlug === slug) {
-      return { card, canonicalSlug, canRedirect: false };
+      return { card, canonicalSlug, canRedirect: false, fromArtifact: false };
     }
 
     /**
@@ -54,7 +81,7 @@ export const resolveCardBySlug = cache(
     const destination = corpusCard(canonicalSlug);
     const canRedirect = destination?.name === card.name;
 
-    return { card, canonicalSlug, canRedirect };
+    return { card, canonicalSlug, canRedirect, fromArtifact: false };
   },
 );
 

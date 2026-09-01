@@ -100,9 +100,89 @@ const MAX_ATTEMPTS = 4;
 /** Ceiling on a single backoff. Keeps a retry from outliving the request. */
 const MAX_BACKOFF_MS = 2_000;
 
-async function get<T>(
+/**
+ * Wall-clock ceiling on one logical read, covering all of its retries.
+ *
+ * Scryfall's latency is episodic, not uniform, and that is the whole reason
+ * this exists. A query it has not run recently can take tens of seconds; the
+ * same query answers in ~100ms once its cache is warm. Measured 2026-09-01:
+ * `id<=r legal:commander -type:land` took 16.4s cold and 0.1s warm, and card
+ * pages depending on such a query were hanging for 30–90s with no timeout
+ * anywhere in this file. A render must never be able to wait that long.
+ */
+const DEADLINE_MS = 8_000;
+
+/**
+ * The ceiling for content a page is complete without — synergy suggestions and
+ * live prices.
+ *
+ * Much tighter than `DEADLINE_MS` because the trade is different. A card page
+ * now renders its name, art, oracle text and 2HG Rating from a committed
+ * artifact, so these two are enhancements arriving beside finished content,
+ * and the page is buffered until they land. Waiting the full 8s for a
+ * suggestion rail would mean the visitor waits 8s for a page that was ready
+ * immediately.
+ */
+export const OPTIONAL_DEADLINE_MS = 2_500;
+
+/**
+ * Scryfall was too slow, as distinct from having no such card.
+ *
+ * Kept separate from the `null` that means 404 so a slow response can never be
+ * mistaken for a missing card — that would turn an outage into a page of 404s,
+ * which is far more expensive to undo than an error page.
+ */
+export class ScryfallTimeout extends Error {
+  constructor(path: string, ms: number) {
+    super(`Scryfall did not answer ${path} within ${ms}ms`);
+    this.name = "ScryfallTimeout";
+  }
+}
+
+/**
+ * Resolve `work`, or reject with `ScryfallTimeout` once `ms` has elapsed.
+ *
+ * The request is deliberately left running rather than aborted. Passing an
+ * `AbortSignal` to `fetch` opts it out of Next's per-render memoization — see
+ * the `fetch` API reference in `node_modules/next/dist/docs` — and changing
+ * caching semantics in order to add a timeout would trade one performance bug
+ * for another. Letting it run is also useful: an abandoned request still
+ * populates the data cache when it finally lands, so the visitor who timed out
+ * has warmed the entry for whoever comes next.
+ */
+function withDeadline<T>(
+  work: Promise<T>,
+  ms: number,
+  path: string,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new ScryfallTimeout(path, ms)), ms);
+    // Both handlers are attached even after the deadline fires, so a late
+    // rejection is considered handled and never surfaces as an unhandled one.
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error as Error);
+      },
+    );
+  });
+}
+
+function get<T>(
   path: string,
   revalidate: number = DAY,
+  deadlineMs: number = DEADLINE_MS,
+): Promise<T | null> {
+  return withDeadline(fetchWithRetry<T>(path, revalidate), deadlineMs, path);
+}
+
+async function fetchWithRetry<T>(
+  path: string,
+  revalidate: number,
 ): Promise<T | null> {
   for (let attempt = 1; ; attempt++) {
     const res = await fetch(`${API}${path}`, {
@@ -149,6 +229,8 @@ export type SearchOptions = {
   page?: number;
   /** Collapse reprints down to one printing per card. */
   unique?: "cards" | "art" | "prints";
+  /** Override the wall-clock ceiling; see `OPTIONAL_DEADLINE_MS`. */
+  deadlineMs?: number;
 };
 
 export type SearchResult = {
@@ -183,6 +265,7 @@ export async function searchCards(
   const data = await get<SearchResponse>(
     `/cards/search?${params}`,
     60 * 60 * 6,
+    opts.deadlineMs,
   );
   if (!data) return { ...EMPTY, page: opts.page ?? 1 };
 
@@ -196,8 +279,13 @@ export async function searchCards(
 
 export async function getCardByExactName(
   name: string,
+  deadlineMs?: number,
 ): Promise<ScryfallCard | null> {
-  return get<ScryfallCard>(`/cards/named?exact=${encodeURIComponent(name)}`);
+  return get<ScryfallCard>(
+    `/cards/named?exact=${encodeURIComponent(name)}`,
+    DAY,
+    deadlineMs,
+  );
 }
 
 export async function getCardByFuzzyName(
@@ -250,16 +338,24 @@ export async function getCardsByNames(
 
   const results = await Promise.all(
     batches.map(async (batch) => {
-      const res = await fetch(`${API}/cards/collection`, {
-        method: "POST",
-        headers: { ...HEADERS, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          identifiers: batch.map((name) => ({ name: collectionLookupName(name) })),
+      // Bounded like every other read here: this backs the rule hubs and the
+      // decklist importer, and a slow batch used to be able to park either.
+      const res = await withDeadline(
+        fetch(`${API}/cards/collection`, {
+          method: "POST",
+          headers: { ...HEADERS, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            identifiers: batch.map((name) => ({
+              name: collectionLookupName(name),
+            })),
+          }),
+          // POST bodies aren't cached by Next. Callers that need this cached
+          // across requests go through `getCardsByNamesCached` in ./cards.
+          cache: "no-store",
         }),
-        // POST bodies aren't cached by Next. Callers that need this cached
-        // across requests go through `getCardsByNamesCached` in ./cards.
-        cache: "no-store",
-      });
+        DEADLINE_MS,
+        "/cards/collection",
+      );
       if (!res.ok) return [];
       const json = (await res.json()) as { data: ScryfallCard[] };
       return json.data;

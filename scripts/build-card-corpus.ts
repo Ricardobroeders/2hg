@@ -15,11 +15,16 @@
  * network), and so a Scryfall-side change lands as a reviewable diff instead of
  * silently altering what we publish.
  *
- * **It is an index, never a cache.** `score` and `tier` here decide only which
- * URLs we advertise and how lists are ordered — nothing user-facing renders
- * them. Card pages call `scoreCard()` on live Scryfall data. So a stale corpus
- * can leave a card in a hub it no longer earns; it can never show anyone a
- * stale number.
+ * **The corpus is an index, never a cache.** `score` and `tier` in
+ * `card-corpus.json` decide only which URLs we advertise and how lists are
+ * ordered — nothing user-facing renders them, since card pages always call
+ * `scoreCard()` themselves. A stale corpus leaves a card in a hub it no longer
+ * earns; it cannot show anyone a number the page disagrees with.
+ *
+ * `card-details.json`, written alongside it, is the opposite and is documented
+ * as such in `src/lib/card-details.ts`: it exists to keep card pages off the
+ * network, so it *is* a cache, and only fields that move on Scryfall's
+ * schedule belong in it. Prices are excluded on purpose.
  *
  * What it throws away is the point. Only ~15% of Commander-legal cards trip a
  * 2HG rule at all. The rest render "plays about the same in 2HG as it does in
@@ -33,12 +38,14 @@ import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ScryfallCard } from "@/lib/scryfall";
+import { oracleText, type ScryfallCard } from "@/lib/scryfall";
 import { scoreCard } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
+import { LEGALITY_CODE, LEGALITY_FORMATS } from "@/lib/card-legality";
 
 const BULK = "https://api.scryfall.com/bulk-data/oracle-cards";
 const OUT = join(process.cwd(), "src/data/card-corpus.json");
+const DETAILS_OUT = join(process.cwd(), "src/data/card-details.json");
 
 const HEADERS = {
   Accept: "application/json",
@@ -69,6 +76,79 @@ type CorpusCard = {
   /** Ids of the 2HG rules this card trips. Never empty — that's the filter. */
   rules: string[];
 };
+
+/**
+ * Everything a card page needs to render without calling Scryfall.
+ *
+ * Unlike the corpus beside it, this **is** a cache, and it is the one place in
+ * the codebase where that is true. Which means the honest constraint: only
+ * fields that change on Scryfall's schedule (errata, ban announcements, a new
+ * printing) belong here. Prices deliberately do not — they move daily, and a
+ * committed price is a wrong price. The card page streams those in live.
+ */
+type CardDetail = {
+  slug: string;
+  id: string;
+  oracleId: string;
+  name: string;
+  /** `mana_cost`; empty for lands and for the top level of a transform card. */
+  cost: string;
+  cmc: number;
+  type: string;
+  /** Already joined across faces exactly as `oracleText()` joins them. */
+  oracle: string;
+  colorIdentity: string[];
+  keywords: string[];
+  setCode: string;
+  setName: string;
+  rarity: string;
+  collectorNumber: string;
+  releasedAt: string;
+  layout: string;
+  uri: string;
+  /**
+   * The `normal` image, stored rather than derived from the card id.
+   *
+   * Scryfall's CDN path can be reconstructed from the id, which would save
+   * ~600 KB — but that scheme is not part of their documented API, and a
+   * silent change to it would break every image on the site at once. The
+   * bytes buy us a URL Scryfall actually gave us.
+   */
+  image: string | null;
+  rank: number | null;
+  /** One character per `LEGALITY_FORMATS` entry. See `LEGALITY_CODE`. */
+  legal: string;
+};
+
+function detailFor(card: ScryfallCard, slug: string): CardDetail {
+  return {
+    slug,
+    id: card.id,
+    oracleId: card.oracle_id,
+    name: card.name,
+    cost: card.mana_cost ?? "",
+    cmc: card.cmc,
+    type: card.type_line,
+    oracle: oracleText(card),
+    colorIdentity: card.color_identity,
+    keywords: card.keywords,
+    setCode: card.set,
+    setName: card.set_name,
+    rarity: card.rarity,
+    collectorNumber: card.collector_number,
+    releasedAt: card.released_at,
+    layout: card.layout,
+    uri: card.scryfall_uri,
+    image:
+      card.image_uris?.normal ??
+      card.card_faces?.[0]?.image_uris?.normal ??
+      null,
+    rank: card.edhrec_rank ?? null,
+    legal: LEGALITY_FORMATS.map(
+      (f) => LEGALITY_CODE[card.legalities?.[f] ?? "not_legal"] ?? "n",
+    ).join(""),
+  };
+}
 
 function eligible(card: ScryfallCard): boolean {
   if (card.legalities?.commander !== "legal") return false;
@@ -123,6 +203,7 @@ async function main() {
   });
 
   const kept: CorpusCard[] = [];
+  const details: CardDetail[] = [];
   const byRule = new Map<string, number>();
   const slugs = new Map<string, string[]>();
   let seen = 0;
@@ -162,6 +243,7 @@ async function main() {
       tier: score.tier,
       rules: score.matched.map((m) => m.id),
     });
+    details.push(detailFor(card, slug));
   }
 
   // Two cards on one URL means one of them is permanently unreachable. Fail
@@ -189,6 +271,21 @@ async function main() {
     `{\n"scryfallUpdatedAt": ${JSON.stringify(updatedAt)},\n"cardCount": ${kept.length},\n"cards": [\n${body}\n]}\n`,
   );
 
+  // Details go in their own file, and that separation is deliberate. The
+  // corpus diff is the review artifact for a rule-weight change — you read it
+  // to see which cards moved. Interleaving a paragraph of oracle text per line
+  // would make that diff unreadable, and this file changes wholesale on every
+  // Scryfall rebuild anyway, so there is nothing to review in it line by line.
+  //
+  // Sorted by slug rather than by rank: this one is looked up, never sliced,
+  // and a stable key order keeps successive rebuilds diffable at all.
+  const bySlug = [...details].sort((a, b) => a.slug.localeCompare(b.slug));
+  const detailBody = bySlug.map((c) => JSON.stringify(c)).join(",\n");
+  writeFileSync(
+    DETAILS_OUT,
+    `{\n"scryfallUpdatedAt": ${JSON.stringify(updatedAt)},\n"cardCount": ${bySlug.length},\n"cards": [\n${detailBody}\n]}\n`,
+  );
+
   const pct = ((kept.length / commanderLegal) * 100).toFixed(1);
   process.stdout.write(
     `\n${seen} cards scanned, ${commanderLegal} Commander-legal, ${kept.length} trip a 2HG rule (${pct}%).\n\n`,
@@ -197,6 +294,7 @@ async function main() {
     process.stdout.write(`  ${rule.padEnd(24)} ${String(count).padStart(5)}\n`);
   }
   process.stdout.write(`\nWrote ${OUT}\n`);
+  process.stdout.write(`Wrote ${DETAILS_OUT}\n`);
 }
 
 main().catch((error) => {

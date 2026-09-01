@@ -1,7 +1,14 @@
+import { Suspense } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { cardImage, oracleText } from "@/lib/scryfall";
+import {
+  OPTIONAL_DEADLINE_MS,
+  cardImage,
+  getCardByExactName,
+  oracleText,
+  type ScryfallCard,
+} from "@/lib/scryfall";
 import { resolveCardBySlug } from "@/lib/cards";
 import { meetsIndexBar, prerenderSlugs } from "@/lib/corpus";
 import { scoreCard } from "@/lib/twohg-score";
@@ -30,7 +37,16 @@ export async function generateMetadata({
   params,
 }: PageProps<"/cards/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const resolved = await resolveCardBySlug(slug);
+  /**
+   * A throw in here escapes the error boundary — `generateMetadata` runs
+   * before the page renders, so a Scryfall timeout during it produced a bare
+   * 500 with none of `error.tsx` on it. Swallowing lets the page body do the
+   * throwing, where the boundary can catch it and offer a retry.
+   *
+   * `null` and "it failed" deliberately land in the same place: both mean we
+   * have nothing to describe, and neither should be advertised to search.
+   */
+  const resolved = await resolveCardBySlug(slug).catch(() => null);
   if (!resolved) {
     return { title: "Card not found", robots: { index: false, follow: false } };
   }
@@ -67,6 +83,89 @@ export async function generateMetadata({
   };
 }
 
+/**
+ * Buy links with live prices.
+ *
+ * Split out and suspended because prices are the one thing on this page that
+ * genuinely can't be committed — they move daily, so a stored price is a wrong
+ * price. The fallback is the same component with the artifact's price-less
+ * card, which already renders "View" instead of a figure, so the rail is
+ * complete and clickable from the first paint and only the numbers arrive late.
+ */
+async function PricedBuyRail({ card }: { card: ScryfallCard }) {
+  const live = await getCardByExactName(
+    card.name,
+    OPTIONAL_DEADLINE_MS,
+  ).catch(() => null);
+  return <AffiliateButtons card={live ?? card} />;
+}
+
+/**
+ * The "plays well beside it" rail.
+ *
+ * Suspended because it issues the widest Scryfall query on the site and used
+ * to be awaited before *any* of this page rendered — a suggestion rail at the
+ * very bottom was holding up the card's name, its art and its 2HG Rating. It
+ * now streams in beside content that has already painted, and returns nothing
+ * at all if Scryfall is too slow.
+ */
+async function SynergyRail({ card }: { card: ScryfallCard }) {
+  const synergy = await synergyFor(card);
+  if (synergy.length === 0) return null;
+
+  return (
+    <section>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold text-white">
+            Plays well beside it
+          </h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            {synergy[0].because} — good candidates for your teammate&apos;s
+            deck.
+          </p>
+        </div>
+        <Link
+          href={`/cards?q=${encodeURIComponent(`id<=${card.color_identity.join("") || "c"}`)}`}
+          className="shrink-0 text-sm text-emerald-400 hover:text-emerald-300"
+        >
+          More →
+        </Link>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {synergy.map(({ card: pick }) => (
+          <CardTile key={pick.id} card={pick} />
+        ))}
+      </div>
+
+      <p className="mt-4 text-xs text-zinc-600">
+        Suggestions are characteristic-based for now. Once teams submit
+        pairings, this becomes a real co-occurrence score:{" "}
+        <em>played in X% of teams whose partner deck runs {card.name}</em>.
+      </p>
+    </section>
+  );
+}
+
+/** Holds the rail's space while it loads, so the page doesn't jump. */
+function SynergySkeleton() {
+  return (
+    <section aria-hidden="true">
+      <div className="h-6 w-48 rounded bg-white/5" />
+      <div className="mt-2 h-4 w-72 rounded bg-white/5" />
+      <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div
+            key={i}
+            className="aspect-[488/680] w-full rounded-xl bg-white/5 ring-1 ring-white/10"
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
   const { slug } = await params;
   const resolved = await resolveCardBySlug(slug);
@@ -79,7 +178,6 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
   if (resolved.canRedirect) permanentRedirect(`/cards/${canonicalSlug}`);
 
   const score = scoreCard(card);
-  const synergy = await synergyFor(card);
   const image = cardImage(card, "normal");
   const ups = score.matched.filter((m) => m.impact === "up");
   const downs = score.matched.filter((m) => m.impact === "down");
@@ -110,7 +208,15 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
               Buy this card
             </h2>
-            <AffiliateButtons card={card} />
+            {/* Only an artifact card is missing prices. One resolved live has
+                them already, and refetching would be a request for nothing. */}
+            {resolved.fromArtifact ? (
+              <Suspense fallback={<AffiliateButtons card={card} />}>
+                <PricedBuyRail card={card} />
+              </Suspense>
+            ) : (
+              <AffiliateButtons card={card} />
+            )}
           </div>
         </aside>
 
@@ -237,39 +343,9 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
             </div>
           </section>
 
-          {synergy.length > 0 && (
-            <section>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-semibold text-white">
-                    Plays well beside it
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {synergy[0].because} — good candidates for your teammate&apos;s
-                    deck.
-                  </p>
-                </div>
-                <Link
-                  href={`/cards?q=${encodeURIComponent(`id<=${card.color_identity.join("") || "c"}`)}`}
-                  className="shrink-0 text-sm text-emerald-400 hover:text-emerald-300"
-                >
-                  More →
-                </Link>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-                {synergy.map(({ card: pick }) => (
-                  <CardTile key={pick.id} card={pick} />
-                ))}
-              </div>
-
-              <p className="mt-4 text-xs text-zinc-600">
-                Suggestions are characteristic-based for now. Once teams submit
-                pairings, this becomes a real co-occurrence score:{" "}
-                <em>played in X% of teams whose partner deck runs {card.name}</em>.
-              </p>
-            </section>
-          )}
+          <Suspense fallback={<SynergySkeleton />}>
+            <SynergyRail card={card} />
+          </Suspense>
 
           <p className="text-xs text-zinc-600">
             <a
