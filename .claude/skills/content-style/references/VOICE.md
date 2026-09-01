@@ -7,8 +7,11 @@ in `src/lib/team.ts`, `src/app/rules/page.tsx` and `SHELVES` in
 
 ## The shape of a sentence
 
-- **Short and declarative.** Observed median is 16–22 words. Hard ceiling ~35 —
-  past that, split it.
+- **Short and declarative.** Measured across the hub descriptions and
+  `SHARED_RULES`: median **13 words**, three-quarters at 20 or fewer, and the
+  longest sentence anywhere on the site is 25. Treat **28 as the ceiling** —
+  past that, split it. If your median is drifting toward 20 you are writing a
+  different site.
 - **Open flat, then land the consequence.** The strongest existing paragraph
   does exactly this: *"Two teams of two. Each team shares one life total and
   takes one turn together. That's the whole format — and it's enough to change
@@ -25,11 +28,12 @@ in `src/lib/team.ts`, `src/app/rules/page.tsx` and `SHELVES` in
 
 ## Punctuation
 
-- **Em dashes are in.** Roughly one per paragraph, used for a corrective or a
-  consequence: *"Stax effects tax two opponents for the price of one — provided
+- **Em dashes are in, but they are not the default.** Measured: about one
+  paragraph in five carries one (21%), never more than one each. Use it for a
+  corrective or a consequence: *"Stax effects tax two opponents for the price of one — provided
   your own teammate can play through them."* Do not import an em-dash ban from
-  another project; it is not this project's rule. Two in one paragraph is
-  usually one too many.
+  another project; it is not this project's rule. But a page where most
+  paragraphs have one has overused it — reach for a full stop instead.
 - **Curly quotes around quoted card text** — `“each opponent”`, `“target
   player”` — matching `COPY`. Straight apostrophes in possessives and
   contractions.
