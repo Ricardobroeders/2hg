@@ -120,8 +120,16 @@ export const getCardsByNamesCached = unstable_cache(
  * Hydrate a decklist for display, degrading instead of failing.
  *
  * Shared pairings and shared decks are the surface a teammate is *sent*, so
- * they must render something even when Scryfall won't answer. Two rules make
- * that safe:
+ * they must render something even when Scryfall won't answer — and Scryfall
+ * declining to answer is not rare. Measured 2026-09-01 against production:
+ * requests arriving one at a time were served reliably, but eleven share
+ * pages loaded back to back put us over the rate limit from Vercel's shared
+ * egress address, and the retries then made the burst worse. Caching is what
+ * absorbs that, which is why hydration is cached even though the pages around
+ * it are `force-dynamic`: taking the cache away and re-asking Scryfall each
+ * time was measurably worse, not better.
+ *
+ * Two rules make the caching safe:
  *
  * 1. `getCardsByNames` is all-or-nothing, so a rate-limited moment throws and
  *    `unstable_cache` stores nothing. Caching a failure is the one outcome
