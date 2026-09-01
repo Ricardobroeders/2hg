@@ -149,3 +149,43 @@ Before shipping, check your opening sentences against the other pages of the
 same type. If a twelve-word window appears anywhere else on the site, rewrite
 it — near-duplicate blocks across the site's most important pages are exactly
 the problem `meetsIndexBar` exists to keep off it.
+
+## Openings
+
+**Open with a named card doing the thing.** The abstraction lands faster when a
+reader can picture it, and a card name is a recognisable anchor in a search
+snippet where a rule statement is not.
+
+> A Gray Merchant of Asphodel that drains for five in a duel drains for ten
+> here, and gives your team ten back. Every "each opponent" clause resolves
+> twice in 2HG, and both halves land on one shared life total.
+
+Card first, rule second. The reverse — rule then example — is more logical and
+noticeably slower to grip; it reads like a textbook opening a chapter.
+
+This applies to the page intro and to each section's first paragraph.
+
+## Choosing example cards
+
+The page already shows 60 tiles ranked by the rating. Prose examples are doing a
+different job, so they are chosen differently.
+
+**Pick for recognition, not for score.** Sort the rule's cards by EDHREC rank
+and choose from the top of *that* list. The rating's top entries are the cards
+that trip the most rules at once, which is not the same as the cards a reader
+owns — `each-opponent` scores *Kefka, Court Mage* and *One Ring to Rule Them
+All* above *Impact Tremors* and *Gray Merchant of Asphodel*, and only the second
+pair explains anything to anybody.
+
+A chip the reader does not recognise costs a line and teaches nothing.
+
+**Name the obvious card rather than dodging it.** Every list has one card
+everyone expects to see. Acknowledge it in a clause so the reader knows it was
+not missed, then spend the paragraph on what they do not already know.
+
+> Cyclonic Rift is on this list and needs no introduction. The more interesting
+> entries are the cheap symmetrical wraths, which 2HG improves far more than it
+> improves Rift.
+
+Omitting it entirely reads as an oversight, and a page that looks like it missed
+the famous card does not get trusted on the unfamiliar ones.

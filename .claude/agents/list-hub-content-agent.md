@@ -219,7 +219,16 @@ and **no H2 without at least one card named from this rule's own list**.
 
 ## Step 6 — Write the body
 
-Apply `.claude/skills/content-style/`. Card names go in `sections[].cards`
+Apply `.claude/skills/content-style/`. Three rules from `VOICE.md` bear
+repeating here because they shape the draft rather than correct it:
+
+- **Open the intro and every section with a named card doing the thing**, then
+  state the rule. Card first, mechanism second.
+- **Choose chips and prose examples from the rank-sorted list**, not the
+  score-sorted one. Recognition beats optimality — a chip the reader does not
+  know teaches nothing.
+- **Name the obvious card** the list is expected to contain, in a clause, then
+  move on to what the reader does not already know. Card names go in `sections[].cards`
 exactly as Scryfall prints them (front face in prose, full `A // B` name in the
 array for MDFCs) — the page links them by slug, so a name outside this rule's
 list would link to a page contradicting the section it sits under.

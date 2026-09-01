@@ -46,9 +46,9 @@ If you read nothing else:
    React component use `ManaCost` / `ManaText`; in a plain string, write "a
    three-mana black spell" instead. A string literal bypasses the components
    entirely, which is the one place the invariant cannot defend itself.
-5. **Em dashes are in.** Roughly one per paragraph, for a corrective or a
-   consequence. If you have absorbed a house rule banning them from somewhere
-   else, that rule is not this project's. See `VOICE.md`.
+5. **Em dashes are in, but sparing.** About one paragraph in five carries one,
+   for a corrective or a consequence. If you have absorbed a house rule banning
+   them from somewhere else, that rule is not this project's. See `VOICE.md`.
 
 ## Where the voice already lives
 
