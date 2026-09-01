@@ -216,6 +216,26 @@ export async function autocomplete(query: string): Promise<string[]> {
   return data?.data ?? [];
 }
 
+/**
+ * The name to send to Scryfall's `/cards/collection` endpoint.
+ *
+ * That endpoint matches a split, transform or adventure card by its **front
+ * face** and rejects the combined "A // B" form outright — not as a miss, but
+ * as `not_found`. Both of our name sources use the combined form: the card
+ * corpus stores Scryfall's own `name`, and Moxfield and Archidekt exports
+ * print it that way too. So every such card was silently dropped, leaving 60
+ * blank slots across the 18 rule hubs and quietly losing cards out of pasted
+ * decklists.
+ *
+ * Scryfall answers with the full combined name regardless of which form it was
+ * asked for, so callers keying results by the combined name keep matching. A
+ * name without a `//` is returned unchanged, which is why this is safe to
+ * apply to every identifier rather than only the ones we think need it.
+ */
+export function collectionLookupName(name: string): string {
+  return name.split(" // ")[0].trim();
+}
+
 /** Fetch many cards at once via Scryfall's collection endpoint (75 max/call). */
 export async function getCardsByNames(
   names: string[],
@@ -234,7 +254,7 @@ export async function getCardsByNames(
         method: "POST",
         headers: { ...HEADERS, "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifiers: batch.map((name) => ({ name })),
+          identifiers: batch.map((name) => ({ name: collectionLookupName(name) })),
         }),
         // POST bodies aren't cached by Next. Callers that need this cached
         // across requests go through `getCardsByNamesCached` in ./cards.
