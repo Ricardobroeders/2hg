@@ -1,6 +1,6 @@
 # Keyword map
 
-Research done 2026-08-31. Re-check the "who ranks" column before committing to
+Research done 2026-09-01. Re-check the "who ranks" column before committing to
 a term — it is the part that goes stale.
 
 ## The four tiers
@@ -10,7 +10,7 @@ a term — it is the part that goes stale.
 | **Head** | "two headed giant rules", "2hg commander", "two headed giant commander" | WotC's own format page, Draftsim's "Ultimate Guide", `blogs.magicjudges.org/2hg` FAQ, MTG Wiki | **Contested.** High-authority incumbents. Compete with `/rules` on precision, not with another guide. |
 | **Set-timed** | "two headed giant commander night [set]" | Only WotC's own thin WPN event page | **Weak — take it.** Recurring monthly, calendar known in advance. |
 | **Card long tail** | "[card] in two headed giant", "is [card] good in 2hg" | Nothing | **Open.** ~5,600 genuinely differentiated pages. The main engine. |
-| **List / class** | "best sweepers two headed giant", "2hg extra turn cards" | MTGSalvation threads (dead since ~2019), Archidekt user decks | **Open.** 18 hub pages at `/lists/[rule]`. |
+| **List / class** | "best sweepers two headed giant", "2hg extra turn cards" | Two disjoint sets, neither on the query: generic Commander class listicles that never say 2HG (Draftsim, TheGamer, krakenthemeta), and 2HG guides with no card lists (Draftsim's guide, Face to Face's primer). Plus dead MTGSalvation/TappedOut threads and Archidekt user decks. | **Open.** 18 hub pages at `/lists/[rule]`. |
 | **Pairing** | "best 2HG partner for [commander]" | Nothing | **Blocked** — needs the synergy engine. Do not fake it. |
 
 ## Competitive notes
@@ -25,6 +25,14 @@ worth re-reading before anyone proposes making them one.
 
 **Archidekt / TappedOut** hold scattered user-made "2HG pairing ideas" decks.
 Individual decks, no editorial, no aggregation.
+
+## Hub research log
+
+One row per `/lists/[rule]` hub whose long-form content has been researched.
+
+| slug | researched | primary query | who ranks |
+| --- | --- | --- | --- |
+| `sweeper` | 2026-09-01 | best sweepers two headed giant | Nobody on the intersection. Board-wipe listicles omit 2HG entirely; 2HG guides omit board wipes. Face to Face's 2HG primer ranks and states 30 life, which is the Sealed/Constructed number. |
 
 ## Localisation
 

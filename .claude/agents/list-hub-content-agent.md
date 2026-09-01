@@ -120,9 +120,18 @@ In this order:
 3. Read `FORMATS.commander` and `SHARED_RULES` in `src/lib/team.ts`. Every
    format number in the draft comes from here.
 
-4. If you need a card's oracle text, `WebFetch https://api.scryfall.com/cards/named?exact=<name>`
-   — **at most 10 per run**, never a bulk endpoint, never scraping scryfall.com
-   HTML. Card behaviour is never written from memory.
+4. If you need a card's oracle text, fetch it. **`WebFetch` returns 403 on
+   `api.scryfall.com`** — it does not send an acceptable User-Agent — so use
+   `curl` instead:
+
+   ```bash
+   curl -s -H "User-Agent: 2HG-content/1.0" -H "Accept: application/json" \
+     --get --data-urlencode "exact=<card name>" https://api.scryfall.com/cards/named
+   ```
+
+   **At most 10 per run**, single-card `/cards/named` only, never a bulk
+   endpoint, never scraping scryfall.com HTML, and sleep briefly between calls.
+   Card behaviour is never written from memory.
 
 5. Read the first body paragraph of every other content file:
 
@@ -276,6 +285,7 @@ Run every check and report pass/fail for each.
 | 6 | Heuristic labelling | `grep -niE 'measured\|data shows\|statistic\|proven\|studies\|win.?rate\|tested'` → empty |
 | 7 | No fabricated aggregates | `grep -nE '%\|\bmost players\b\|\bon average\b\|\bsearch volume\b\|\bcommonly\b'` → empty |
 | 8 | Every named card is in this rule's list | `node -e` intersecting `sections[].cards` against the Step 2 corpus filter, plus a hand-scan of capitalised names in prose |
+| 8b | **Every behavioural claim matches the fetched oracle text** | For each card whose behaviour a sentence describes, put your sentence and the card's oracle clause side by side and confirm they agree. Membership in the rule is not evidence the claim is right — the pilot passed check 8 while asserting Damning Verdict works like Fell the Mighty, when one is targeted and the other destroys "all creatures with no counters on them". If you did not fetch the card, do not describe what it does |
 | 9 | **No duplicate framing across hubs** | for the first sentence of every section, take each 12-word window and `grep -F` it across `src/content/lists/*.ts`. Any hit outside the target file is a fail |
 | 10 | No blocked claims | `grep -niE 'best partner\|pairs (best\|well) with\|synergy score'` → empty. The synergy engine does not exist |
 | 11 | Only one file changed | `git diff --stat` |
