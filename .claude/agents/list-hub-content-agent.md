@@ -235,8 +235,10 @@ Each `title` is a **real search query** taken from the question list collected i
 Step 3 — not invented at the desk. Natural phrasing as a person types it, ending
 in `?`. Do not title-case it into a marketing headline.
 
-Each `body` is **40–60 words**, answer in the first sentence, the rest
-supporting. Every fact must already be on the page — the FAQ summarises, it
+Each `body` is **40–60 words**. The **first words answer outright** — "Yes.",
+"No.", or the number — then the mechanism. These get quoted by answer engines
+without the page around them, so an answer that opens by restating the question
+wastes the only sentence that reliably survives the quote. Every fact must already be on the page — the FAQ summarises, it
 never introduces. Format numbers must match `/rules` exactly; two pages on this
 site disagreeing about the life total is a failure that has shipped before. No
 humor here.
@@ -276,8 +278,9 @@ is **40–60 words**, reported per entry; no two questions are paraphrases; no
 humor.
 
 **Style checks:** banned-phrase grep from `VOICE.md`; no sentence over 28 words;
-at most one humor aside on the page and none in an FAQ, H2, meta or opening
-sentence (`HUMOR.md`); every number classified per `STATS.md` as corpus-exact,
+humor graded against the `HUMOR.md`
+ladder — at most one C-level nod and two B-level asides per page, level A only
+in FAQs, headings, meta and opening sentences, never a D; every number classified per `STATS.md` as corpus-exact,
 `FORMATS`-derived, or `sources[]`-backed.
 
 ## Step 10 — Apply
