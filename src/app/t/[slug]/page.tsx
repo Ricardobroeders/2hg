@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DatabaseNotConfiguredError } from "@/lib/db";
 import { getTeamBySlug, recordView } from "@/lib/db/teams";
-import { getCardsByNamesCached } from "@/lib/cards";
+import { hydrateDecklist } from "@/lib/cards";
 import { isCrawler } from "@/lib/crawler";
 import { FORMATS, validateTeam } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
@@ -72,7 +72,7 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
       ...team.b.commanders,
     ]),
   ];
-  const cardList = await getCardsByNamesCached(names);
+  const cardList = await hydrateDecklist(names);
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
   const validation = validateTeam(team, cards);

@@ -402,35 +402,25 @@ export async function getCardsByNames(
   for (const [i, batch] of batches.entries()) {
     const remaining = endBy - Date.now();
     if (remaining <= 0) {
-      console.error(
-        `getCardsByNames: out of time with ${batches.length - i} batches left`,
-      );
-      break;
+      throw new ScryfallTimeout("/cards/collection", DEADLINE_MS);
     }
 
     if (i > 0) await new Promise((resolve) => setTimeout(resolve, 100));
 
-    try {
-      cards.push(
-        ...(await withDeadline(
-          postCollection(batch),
-          remaining,
-          "/cards/collection",
-        )),
-      );
-    } catch (error) {
-      /**
-       * A decklist that renders without art is degraded but still readable;
-       * one that throws is a dead share link, and share links are the only
-       * way this site spreads. So a failed batch costs its own cards and
-       * nothing else — but it is logged, because swallowing it in silence is
-       * precisely how a fully blank pairing page shipped unnoticed.
-       */
-      console.error(
-        `getCardsByNames: batch ${i + 1}/${batches.length} failed`,
-        error,
-      );
-    }
+    /**
+     * A failed batch fails the whole hydration rather than returning what it
+     * managed to get. Callers cache this, and a half-empty result cached for a
+     * day is worse than an honest failure the caller can degrade around — the
+     * first version of this returned partial data and froze a rate-limited
+     * moment into a day-long blank page.
+     */
+    cards.push(
+      ...(await withDeadline(
+        postCollection(batch),
+        remaining,
+        "/cards/collection",
+      )),
+    );
   }
 
   return cards;

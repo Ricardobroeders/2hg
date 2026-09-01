@@ -62,6 +62,21 @@ export function cardDetail(slug: string): CardDetail | undefined {
   return BY_SLUG.get(slug);
 }
 
+const BY_NAME = new Map(DETAILS.map((card) => [card.name, card]));
+
+/**
+ * Look a card up by its canonical Scryfall name — the join key everywhere
+ * decks are concerned, since a decklist stores names and never ids.
+ *
+ * This is the fallback the shared pairing pages use when Scryfall will not
+ * answer. It covers only the ~18% of Commander-legal cards that trip a 2HG
+ * rule, so a decklist hydrated this way is partial by construction; it exists
+ * so an outage costs a visitor some art rather than all of it.
+ */
+export function cardDetailByName(name: string): CardDetail | undefined {
+  return BY_NAME.get(name);
+}
+
 /**
  * Rebuild a `ScryfallCard` from a stored detail.
  *

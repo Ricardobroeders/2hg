@@ -8,7 +8,7 @@ import {
 } from "./scryfall";
 import { fromSlug, toSlug } from "./slug";
 import { corpusCard } from "./corpus";
-import { cardDetail, detailToCard } from "./card-details";
+import { cardDetail, cardDetailByName, detailToCard } from "./card-details";
 
 export type ResolvedCard = {
   card: ScryfallCard;
@@ -105,6 +105,41 @@ export const resolveCardBySlug = cache(
  */
 export const getCardsByNamesCached = unstable_cache(
   async (names: string[]): Promise<ScryfallCard[]> => getCardsByNames(names),
-  ["scryfall-cards-by-names"],
+  // v2 abandons the entries written while a partial hydration could be
+  // cached; Vercel's Data Cache survives deployments, so a poisoned key
+  // outlives the fix that stopped it being written.
+  ["scryfall-cards-by-names", "v2"],
   { revalidate: 86400 },
 );
+
+/**
+ * Hydrate a decklist for display, degrading instead of failing.
+ *
+ * Shared pairings and shared decks are the surface a teammate is *sent*, so
+ * they must render something even when Scryfall won't answer. Two rules make
+ * that safe:
+ *
+ * 1. `getCardsByNames` is all-or-nothing, so a rate-limited moment throws and
+ *    `unstable_cache` stores nothing. Caching a failure is the one outcome
+ *    worse than the failure, because it outlives the outage by a day.
+ * 2. The fallback is the committed artifact, never a half-finished upstream
+ *    read. It covers the rule-matching cards only, so the page comes back
+ *    partial — but the next visitor retries Scryfall rather than inheriting
+ *    this.
+ */
+export async function hydrateDecklist(
+  names: string[],
+): Promise<ScryfallCard[]> {
+  try {
+    return await getCardsByNamesCached(names);
+  } catch (error) {
+    console.error(
+      `hydrateDecklist: Scryfall unavailable for ${names.length} names, falling back to the committed artifact`,
+      error,
+    );
+    return names
+      .map((name) => cardDetailByName(name))
+      .filter((detail) => detail != null)
+      .map(detailToCard);
+  }
+}
