@@ -72,7 +72,14 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
       ...team.b.commanders,
     ]),
   ];
-  const cardList = await getCardsByNames(names);
+  let debug = "";
+  let cardList: Awaited<ReturnType<typeof getCardsByNames>> = [];
+  try {
+    cardList = await getCardsByNames(names);
+    debug = `names=${names.length} resolved=${cardList.length}`;
+  } catch (e) {
+    debug = `THREW ${String(e)}`;
+  }
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
   const validation = validateTeam(team, cards);
@@ -90,7 +97,7 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
   if (!(await isCrawler())) void recordView(slug);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6" data-probe={debug}>
       <header className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">
