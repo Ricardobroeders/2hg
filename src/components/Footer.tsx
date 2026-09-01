@@ -1,4 +1,5 @@
 import { FooterAccordion, type FooterColumn } from "./FooterAccordion";
+import { DISCORD_URL } from "@/lib/site";
 
 /**
  * The footer's link columns.
@@ -49,15 +50,16 @@ const COLUMNS: readonly FooterColumn[] = [
 ];
 
 /**
- * Placeholders. The glyphs are the exported Figma assets, but there are no
- * accounts to point them at yet, so they render as decoration rather than as
- * links to nowhere — `aria-hidden` keeps screen readers from announcing three
- * dead controls. Swap each <span> for an <a href> when the accounts exist.
+ * Discord is a real server and doubles as the contact route `/privacy` and
+ * `/terms` point at, so it links out. Reddit and Instagram are still the
+ * exported Figma glyphs with no accounts behind them: they stay decoration
+ * rather than links to nowhere, and `alt=""` keeps screen readers from
+ * announcing them. Give one an `href` when its account exists.
  */
-const SOCIALS = [
+const SOCIALS: { name: string; src: string; href?: string }[] = [
   { name: "Reddit", src: "/images/social/reddit.svg" },
   { name: "Instagram", src: "/images/social/instagram.svg" },
-  { name: "Discord", src: "/images/social/discord.svg" },
+  { name: "Discord", src: "/images/social/discord.svg", href: DISCORD_URL },
 ];
 
 export function Footer() {
@@ -84,24 +86,43 @@ export function Footer() {
           />
 
           {/* Sits beside the logo on mobile and at the far end of the row from
-              md up. Ordered by CSS rather than by DOM position, which is only
-              safe because these are decorative and unfocusable — reordering
-              real controls this way would desync the tab order from the page. */}
-          <div
-            aria-hidden="true"
-            className="ml-auto flex shrink-0 items-center gap-4 md:order-last md:ml-0"
-          >
-            {SOCIALS.map((social) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={social.name}
-                src={social.src}
-                alt=""
-                width={24}
-                height={24}
-                className="size-6"
-              />
-            ))}
+              md up. The row now carries one real link, so `md:order-last` does
+              move a focusable control away from where it's painted. Tolerable
+              for a single footer link; anything further that's focusable
+              should be reordered in the DOM instead of by CSS. */}
+          <div className="ml-auto flex shrink-0 items-center gap-4 md:order-last md:ml-0">
+            {SOCIALS.map((social) =>
+              social.href ? (
+                <a
+                  key={social.name}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`${social.name} — join the server`}
+                  className="transition hover:opacity-70"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={social.src}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="size-6"
+                  />
+                </a>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={social.name}
+                  src={social.src}
+                  alt=""
+                  aria-hidden="true"
+                  width={24}
+                  height={24}
+                  className="size-6"
+                />
+              ),
+            )}
           </div>
 
           <div className="w-full text-xs leading-relaxed text-zinc-600 md:w-auto md:flex-1">

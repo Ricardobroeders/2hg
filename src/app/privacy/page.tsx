@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DISCORD_URL } from "@/lib/site";
 import { LegalPage, Section } from "@/components/LegalPage";
 
 export const metadata: Metadata = {
@@ -131,8 +132,10 @@ export default function PrivacyPage() {
         <p>
           Under the GDPR you may request a copy of your data, have it corrected
           or erased, object to how it is used, or ask for it in a portable
-          format. Email{" "}
-          <a href="mailto:info@ricardobroeders.nl">info@ricardobroeders.nl</a>{" "}
+          format. Ask us on{" "}
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            our Discord server
+          </a>{" "}
           and we will act on it.
         </p>
         <p>
@@ -144,15 +147,18 @@ export default function PrivacyPage() {
             rel="noopener noreferrer"
           >
             Autoriteit Persoonsgegevens
-          </a>
-          .
+          </a>.
         </p>
       </Section>
 
       <Section heading="Children">
         <p>
           This site is not directed at children under 16. If you believe a child
-          has given us personal data, contact us and we will remove it.
+          has given us personal data, tell us on{" "}
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            our Discord server
+          </a>{" "}
+          and we will remove it.
         </p>
       </Section>
 
@@ -160,7 +166,9 @@ export default function PrivacyPage() {
         <p>
           If this policy changes materially we will update the date at the top.
           Questions go to{" "}
-          <a href="mailto:info@ricardobroeders.nl">info@ricardobroeders.nl</a>.
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            our Discord server
+          </a>.
         </p>
         <p>
           See also our <Link href="/terms">Terms of Service</Link>.

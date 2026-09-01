@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DISCORD_URL } from "@/lib/site";
 import { LegalPage, Section } from "@/components/LegalPage";
 
 export const metadata: Metadata = {
@@ -48,8 +49,10 @@ export default function TermsPage() {
         <p>
           You do not need an account. If you create one via Google, keep access
           to that Google account secure — anyone who controls it controls your
-          pairings. You must be at least 16. Tell us at{" "}
-          <a href="mailto:info@ricardobroeders.nl">info@ricardobroeders.nl</a>{" "}
+          pairings. You must be at least 16. Tell us on{" "}
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            our Discord server
+          </a>{" "}
           if you want your account deleted.
         </p>
       </Section>
@@ -142,7 +145,9 @@ export default function TermsPage() {
         <p>
           If these terms change materially we will update the date at the top.
           Questions go to{" "}
-          <a href="mailto:info@ricardobroeders.nl">info@ricardobroeders.nl</a>.
+          <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer">
+            our Discord server
+          </a>.
         </p>
         <p>
           See also our <Link href="/privacy">Privacy Policy</Link>.

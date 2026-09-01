@@ -55,3 +55,12 @@ export const IS_PRODUCTION = process.env.VERCEL_ENV === "production";
 export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
+
+/**
+ * Public contact channel.
+ *
+ * Load-bearing rather than decorative: `/privacy` and `/terms` name it as the
+ * route for data-protection and account-deletion requests, so if the invite is
+ * ever revoked both pages lose their stated way to reach us.
+ */
+export const DISCORD_URL = "https://discord.gg/chdATWFckx";
