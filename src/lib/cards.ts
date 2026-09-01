@@ -120,36 +120,30 @@ export const getCardsByNamesCached = unstable_cache(
  * Hydrate a decklist for display, degrading instead of failing.
  *
  * Shared pairings and shared decks are the surface a teammate is *sent*, so
- * they must render something even when Scryfall won't answer.
+ * they must render something even when Scryfall won't answer. Two rules make
+ * that safe:
  *
- * Deliberately **not** wrapped in `unstable_cache`, unlike the rule hubs.
- * Measured against production on 2026-09-01: this exact call through
- * `/api/cards`, outside any cache scope, succeeded on every attempt, while
- * the same names through an `unstable_cache` wrapper failed on roughly half
- * of all cold renders — always after the same ~6.5s, the shape of four
- * exhausted retries. Whatever the cache scope does to the POST, a shared link
- * that renders blank half the time is a worse trade than re-asking Scryfall,
- * and `getCardsByNames` is now well-behaved enough to be asked: sequential
- * batches, the gap Scryfall requests, and real 429 handling.
- *
- * `cache()` still collapses duplicate hydrations *within* one render, and the
- * fallback is the committed artifact rather than a half-finished upstream
- * read — partial, since the artifact holds only rule-matching cards, but the
- * next visitor retries Scryfall rather than inheriting this one's bad luck.
+ * 1. `getCardsByNames` is all-or-nothing, so a rate-limited moment throws and
+ *    `unstable_cache` stores nothing. Caching a failure is the one outcome
+ *    worse than the failure, because it outlives the outage by a day.
+ * 2. The fallback is the committed artifact, never a half-finished upstream
+ *    read. It covers the rule-matching cards only, so the page comes back
+ *    partial — but the next visitor retries Scryfall rather than inheriting
+ *    this.
  */
-export const hydrateDecklist = cache(
-  async (names: string[]): Promise<ScryfallCard[]> => {
-    try {
-      return await getCardsByNames(names);
-    } catch (error) {
-      console.error(
-        `hydrateDecklist: Scryfall unavailable for ${names.length} names, falling back to the committed artifact`,
-        error,
-      );
-      return names
-        .map((name) => cardDetailByName(name))
-        .filter((detail) => detail != null)
-        .map(detailToCard);
-    }
-  },
-);
+export async function hydrateDecklist(
+  names: string[],
+): Promise<ScryfallCard[]> {
+  try {
+    return await getCardsByNamesCached(names);
+  } catch (error) {
+    console.error(
+      `hydrateDecklist: Scryfall unavailable for ${names.length} names, falling back to the committed artifact`,
+      error,
+    );
+    return names
+      .map((name) => cardDetailByName(name))
+      .filter((detail) => detail != null)
+      .map(detailToCard);
+  }
+}
