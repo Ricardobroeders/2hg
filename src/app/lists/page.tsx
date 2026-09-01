@@ -57,7 +57,7 @@ export default function ListsIndexPage() {
                   </span>
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                  {hub.rule.reason}
+                  {hub.description}
                 </p>
               </Link>
             ))}

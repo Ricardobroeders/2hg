@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCardsByNamesCached } from "@/lib/cards";
-import { cardsForRule } from "@/lib/corpus";
-import { hubById, listHubs } from "@/lib/lists";
+import { cardsForRule, CORPUS_UPDATED_AT } from "@/lib/corpus";
+import { hubById, listHubs, relatedHubs } from "@/lib/lists";
+import { toSlug } from "@/lib/slug";
 import { CardTile } from "@/components/CardTile";
-import { JsonLd, breadcrumbSchema } from "@/components/JsonLd";
+import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
 
 /** 18 known rules; anything else is genuinely not a page. */
 export const dynamicParams = false;
@@ -58,9 +59,20 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
     .filter((card) => card != null);
 
   const rest = ranked.slice(SHOWN, LISTED);
-  const siblings = listHubs()
-    .filter((other) => other.id !== hub.id && other.rule.impact === hub.rule.impact)
-    .slice(0, 4);
+  const siblings = relatedHubs(hub);
+
+  const { content } = hub;
+  // Before any hub had an authored intro, the description *was* the opening
+  // paragraph. Keeping that as the fallback is what lets a content-less hub
+  // render exactly as it did.
+  const intro = content.intro ?? [hub.description];
+  const sections = content.sections ?? [];
+  const faq = content.faq ?? [];
+  const sources = content.sources ?? [];
+
+  // ISO rather than toLocaleDateString: the latter differs between the build
+  // machine's locale and the runtime's, which shows up as an ISR mismatch.
+  const corpusDate = CORPUS_UPDATED_AT.toISOString().slice(0, 10);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6">
@@ -70,6 +82,15 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
           { name: hub.heading, path: `/lists/${hub.id}` },
         ])}
       />
+      {/*
+        FAQPage ships for AI answer engines, not for a rich result — Google
+        restricted those to government and health sites in August 2023 and this
+        will never render an accordion for us. It is worth shipping anyway
+        because it renders from the same array as the visible prose below, so
+        the markup cannot drift from the page. Indexable hubs only: marking up a
+        page we are asking Google not to index is noise.
+      */}
+      {hub.indexable && faq.length > 0 && <JsonLd data={faqSchema(faq)} />}
 
       <header className="max-w-3xl">
         <Link
@@ -81,9 +102,14 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           {hub.heading}
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-zinc-400">
-          {hub.description}
-        </p>
+        {intro.map((paragraph, i) => (
+          <p
+            key={paragraph}
+            className={`${i === 0 ? "mt-4" : "mt-3"} text-base leading-relaxed text-zinc-400`}
+          >
+            {paragraph}
+          </p>
+        ))}
 
         <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.02] p-4">
           <div className="flex items-baseline gap-3">
@@ -106,6 +132,14 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
               How the format works
             </Link>
           </p>
+          {/*
+            Describes the card data, never the article. A visible timestamp that
+            moves when nothing changed is the same bad signal the sitemap
+            comment warns about.
+          */}
+          <p className="mt-1.5 text-xs text-zinc-600">
+            Card data from Scryfall, rebuilt <time dateTime={corpusDate}>{corpusDate}</time>.
+          </p>
         </div>
       </header>
 
@@ -119,8 +153,13 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
 
       {rest.length > 0 && (
         <section className="mt-12">
+          {/*
+            The generated `More cards that {rule.label}` read as "More cards
+            that board sweeper" for about half the rules. The authored override
+            carries the keyword; the default is at least grammatical for all 18.
+          */}
           <h2 className="text-lg font-semibold text-white">
-            More cards that {hub.rule.label.toLowerCase()}
+            {content.tailHeading ?? "More cards in this list"}
           </h2>
           <ul className="mt-4 grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((card) => (
@@ -134,6 +173,99 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
                 <span className="shrink-0 text-xs tabular-nums text-zinc-600">
                   {card.score}
                 </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/*
+        Prose sits below the grid on purpose. The query is "best sweepers two
+        headed giant" and the answer is the sweepers — the explanation is what
+        the reader wants second, not what they should have to scroll past.
+      */}
+      {sections.length > 0 && (
+        <div className="mt-14 max-w-3xl space-y-10">
+          {sections.map((section) => (
+            <section key={section.heading} id={toSlug(section.heading)}>
+              <h2 className="text-xl font-semibold tracking-tight text-white">
+                {section.heading}
+              </h2>
+              {section.body.map((paragraph) => (
+                <p
+                  key={paragraph}
+                  className="mt-3 text-sm leading-relaxed text-zinc-400"
+                >
+                  {paragraph}
+                </p>
+              ))}
+
+              {section.subsections?.map((sub) => (
+                <div key={sub.heading} className="mt-6">
+                  <h3 className="text-base font-semibold text-white">{sub.heading}</h3>
+                  {sub.body.map((paragraph) => (
+                    <p
+                      key={paragraph}
+                      className="mt-2 text-sm leading-relaxed text-zinc-400"
+                    >
+                      {paragraph}
+                    </p>
+                  ))}
+                </div>
+              ))}
+
+              {section.cards && section.cards.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {section.cards.map((name) => (
+                    <Link
+                      key={name}
+                      href={`/cards/${toSlug(name)}`}
+                      className="rounded-full px-3 py-1 text-xs text-zinc-300 ring-1 ring-inset ring-white/15 transition hover:bg-white/5 hover:text-white"
+                    >
+                      {name}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+          ))}
+        </div>
+      )}
+
+      {faq.length > 0 && (
+        <section className="mt-14 max-w-3xl">
+          <h2 className="text-xl font-semibold tracking-tight text-white">
+            Common questions
+          </h2>
+          <dl className="mt-5 space-y-5">
+            {faq.map((entry) => (
+              <div key={entry.title}>
+                <dt className="text-sm font-semibold text-white">{entry.title}</dt>
+                <dd className="mt-1 text-sm leading-relaxed text-zinc-400">
+                  {entry.body}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {sources.length > 0 && (
+        <section className="mt-12 max-w-3xl border-t border-white/10 pt-8">
+          <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
+            Sources
+          </h2>
+          <ul className="mt-3 space-y-2">
+            {sources.map((source) => (
+              <li key={source.href}>
+                <a
+                  href={source.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
+                >
+                  {source.label}
+                </a>
               </li>
             ))}
           </ul>
