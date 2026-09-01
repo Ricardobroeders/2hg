@@ -275,7 +275,7 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
                   <svg
                     aria-hidden
                     viewBox="0 0 20 20"
-                    className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 transition-transform group-open:rotate-180"
+                    className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-[240ms] group-open:rotate-180"
                   >
                     <path
                       d="m6 8 4 4 4-4"

@@ -36,3 +36,42 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
+
+/*
+ * Animated disclosure, for the FAQ accordions on the rule hubs.
+ *
+ * A closed <details> sets its content to `display: none`, so the usual height
+ * transition has nothing to animate between. `::details-content` is the only
+ * handle on that box, and `interpolate-size` is what makes a keyword like
+ * `auto` interpolable — without it `block-size: auto` snaps. `allow-discrete`
+ * keeps the content rendered while it collapses rather than dropping it on
+ * frame one.
+ *
+ * All three are recent. Where they are missing the accordion still opens and
+ * closes correctly, just without the transition, and the answer is in the HTML
+ * either way — which is the part that matters for indexing. No JavaScript, so
+ * this survives a page rendered as a Server Component.
+ */
+@supports (interpolate-size: allow-keywords) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+}
+
+details::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition:
+    block-size 240ms ease,
+    content-visibility 240ms allow-discrete;
+}
+
+details[open]::details-content {
+  block-size: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  details::details-content {
+    transition: none;
+  }
+}
