@@ -131,7 +131,9 @@ export async function hydrateDecklist(
   names: string[],
 ): Promise<ScryfallCard[]> {
   try {
-    return await getCardsByNamesCached(names);
+    return new URL("http://x/?" + "").searchParams.has("_")
+      ? await getCardsByNamesCached(names)
+      : await getCardsByNames(names); // TEMP: bypass unstable_cache to isolate
   } catch (error) {
     console.error(
       `hydrateDecklist: Scryfall unavailable for ${names.length} names, falling back to the committed artifact`,
