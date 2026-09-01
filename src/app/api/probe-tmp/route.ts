@@ -1,43 +1,46 @@
 // TEMPORARY diagnostic — remove after diagnosing the share-page blank cards.
 import { NextResponse } from "next/server";
+import { getTeamBySlug } from "@/lib/db/teams";
+import { getCardsByNames } from "@/lib/scryfall";
 
 export const dynamic = "force-dynamic";
 
-const NAMES = [
-  "Ad Nauseam", "Ancient Tomb", "Arcane Signet", "Command Tower",
-  "Dark Ritual", "Demonic Tutor", "Sen Triplets", "Yawgmoth, Thran Physician",
-];
-
-export async function GET() {
-  const started = Date.now();
-  const out: Record<string, unknown> = {};
+export async function GET(req: Request) {
+  const slug = new URL(req.url).searchParams.get("slug") ?? "99vwy2j2z9";
+  const out: Record<string, unknown> = { slug };
 
   try {
-    const res = await fetch("https://api.scryfall.com/cards/collection", {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "TwoHeadedGiant/0.1 (https://2hg.dev)",
-      },
-      body: JSON.stringify({ identifiers: NAMES.map((name) => ({ name })) }),
-      cache: "no-store",
-    });
-    out.status = res.status;
-    out.ok = res.ok;
-    out.headers = Object.fromEntries(res.headers.entries());
-    const text = await res.text();
-    out.bodyPreview = text.slice(0, 400);
+    const stored = await getTeamBySlug(slug);
+    if (!stored) return NextResponse.json({ ...out, error: "no team" });
+
+    const { team } = stored;
+    const names = [
+      ...new Set([
+        ...[...team.a.entries, ...team.b.entries].map((e) => e.name),
+        ...team.a.commanders,
+        ...team.b.commanders,
+      ]),
+    ];
+    out.nameCount = names.length;
+    out.sampleNames = names.slice(0, 5);
+    out.commanders = [...team.a.commanders, ...team.b.commanders];
+
+    const started = Date.now();
     try {
-      out.found = (JSON.parse(text) as { data?: unknown[] }).data?.length ?? null;
-    } catch {
-      out.found = null;
+      const cards = await getCardsByNames(names);
+      out.resolved = cards.length;
+      out.sampleResolved = cards.slice(0, 3).map((c) => c.name);
+      const map = new Map(cards.map((c) => [c.name, c]));
+      out.commanderHits = [...team.a.commanders, ...team.b.commanders].map(
+        (n) => `${n}: ${map.has(n)}`,
+      );
+    } catch (error) {
+      out.getCardsThrew = String(error);
     }
+    out.ms = Date.now() - started;
   } catch (error) {
     out.threw = String(error);
-    out.cause = String((error as { cause?: unknown })?.cause ?? "");
   }
 
-  out.ms = Date.now() - started;
   return NextResponse.json(out);
 }
