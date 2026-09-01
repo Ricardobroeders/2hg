@@ -349,9 +349,15 @@ async function postCollection(batch: string[]): Promise<ScryfallCard[]> {
       method: "POST",
       headers: { ...HEADERS, "Content-Type": "application/json" },
       body,
-      // POST bodies aren't cached by Next. Callers that need this cached
-      // across requests go through `getCardsByNamesCached` in ./cards.
-      cache: "no-store",
+      /**
+       * No `cache` directive on purpose. Next never caches a POST, so
+       * `no-store` did no work here — but it *declares an uncached data
+       * source*, and `getCardsByNamesCached` calls this from inside an
+       * `unstable_cache` scope, where the local Next docs say uncached
+       * sources are unsupported. Cold shared pairings failed at a suspiciously
+       * constant ~6.5s while the identical call from /api/cards, outside any
+       * cache scope, never did. Caching for this path is the wrapper's job.
+       */
     });
 
     if (res.ok) return ((await res.json()) as { data: ScryfallCard[] }).data;
