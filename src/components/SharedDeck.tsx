@@ -49,9 +49,22 @@ export function SharedDeck({
         {deck.commanders.length > 0 && (
           <p className="mt-2 text-xs text-zinc-500">
             Commanded by{" "}
-            <span className="text-zinc-300">
-              {deck.commanders.join(" and ")}
-            </span>
+            {deck.commanders.map((name, i) => {
+              const commander = cards.get(name);
+              return (
+                <span key={name}>
+                  {i > 0 && " and "}
+                  {/* The commander is the one card a visitor most wants to
+                      see, and it is often not in the list below it. */}
+                  <CardLink
+                    name={name}
+                    href={`/cards/${toSlug(name)}`}
+                    image={commander ? cardImage(commander, "normal") : null}
+                    className="text-zinc-300 hover:text-white"
+                  />
+                </span>
+              );
+            })}
           </p>
         )}
       </header>

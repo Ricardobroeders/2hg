@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DatabaseNotConfiguredError } from "@/lib/db";
 import { getTeamBySlug, recordView } from "@/lib/db/teams";
+import { getCardsByNamesCached } from "@/lib/cards";
 import { isCrawler } from "@/lib/crawler";
-import { getCardsByNames } from "@/lib/scryfall";
 import { FORMATS, validateTeam } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { AdoptTeam } from "@/components/AdoptTeam";
@@ -72,14 +72,7 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
       ...team.b.commanders,
     ]),
   ];
-  let debug = "";
-  let cardList: Awaited<ReturnType<typeof getCardsByNames>> = [];
-  try {
-    cardList = await getCardsByNames(names);
-    debug = `names=${names.length} resolved=${cardList.length}`;
-  } catch (e) {
-    debug = `THREW ${String(e)}`;
-  }
+  const cardList = await getCardsByNamesCached(names);
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
   const validation = validateTeam(team, cards);
@@ -97,7 +90,7 @@ export default async function SharedTeamPage(props: PageProps<"/t/[slug]">) {
   if (!(await isCrawler())) void recordView(slug);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6" data-probe={debug}>
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
       <header className="flex flex-wrap items-start justify-between gap-6">
         <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">

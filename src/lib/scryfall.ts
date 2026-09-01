@@ -202,24 +202,32 @@ async function fetchWithRetry<T>(
       );
     }
 
-    // Release the socket before sleeping — undici holds the connection until
-    // the body is read or cancelled, and a retry loop that skips this leaks
-    // one per attempt under build concurrency.
-    await res.body?.cancel().catch(() => {});
-
-    // Honour Retry-After when given, otherwise back off with jitter so a wave
-    // of concurrent renders doesn't retry in lockstep. Capped either way: this
-    // runs inside a request handler, and an uncapped Retry-After would park a
-    // page render for as long as the header says.
-    const after = Number(res.headers.get("retry-after"));
-    const wait = Math.min(
-      Number.isFinite(after) && after > 0
-        ? after * 1000
-        : 250 * 2 ** (attempt - 1) + Math.random() * 250,
-      MAX_BACKOFF_MS,
-    );
-    await new Promise((resolve) => setTimeout(resolve, wait));
+    await backOff(res, attempt);
   }
+}
+
+/**
+ * Wait out a retryable response.
+ *
+ * Honours Retry-After when given, otherwise backs off with jitter so a wave of
+ * concurrent renders doesn't retry in lockstep. Capped either way: this runs
+ * inside a request handler, and an uncapped Retry-After would park a page
+ * render for as long as the header says.
+ */
+async function backOff(res: Response, attempt: number): Promise<void> {
+  // Release the socket before sleeping — undici holds the connection until
+  // the body is read or cancelled, and a retry loop that skips this leaks
+  // one per attempt under build concurrency.
+  await res.body?.cancel().catch(() => {});
+
+  const after = Number(res.headers.get("retry-after"));
+  const wait = Math.min(
+    Number.isFinite(after) && after > 0
+      ? after * 1000
+      : 250 * 2 ** (attempt - 1) + Math.random() * 250,
+    MAX_BACKOFF_MS,
+  );
+  await new Promise((resolve) => setTimeout(resolve, wait));
 }
 
 export type SearchOptions = {
@@ -324,7 +332,57 @@ export function collectionLookupName(name: string): string {
   return name.split(" // ")[0].trim();
 }
 
-/** Fetch many cards at once via Scryfall's collection endpoint (75 max/call). */
+/**
+ * One `/cards/collection` batch, with the same 429 handling as every GET.
+ *
+ * This endpoint is a POST, so it never went through `fetchWithRetry` and was
+ * for a long time the only call in this file with no retry at all — a single
+ * 429 dropped the whole batch on the floor.
+ */
+async function postCollection(batch: string[]): Promise<ScryfallCard[]> {
+  const body = JSON.stringify({
+    identifiers: batch.map((name) => ({ name: collectionLookupName(name) })),
+  });
+
+  for (let attempt = 1; ; attempt++) {
+    const res = await fetch(`${API}/cards/collection`, {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body,
+      // POST bodies aren't cached by Next. Callers that need this cached
+      // across requests go through `getCardsByNamesCached` in ./cards.
+      cache: "no-store",
+    });
+
+    if (res.ok) return ((await res.json()) as { data: ScryfallCard[] }).data;
+
+    const retryable = res.status === 429 || res.status >= 500;
+    if (!retryable || attempt === MAX_ATTEMPTS) {
+      const detail = (await res
+        .json()
+        .catch(() => null)) as ScryfallError | null;
+      throw new Error(
+        `Scryfall ${res.status} on /cards/collection: ${
+          detail?.details ?? res.statusText
+        }`,
+      );
+    }
+
+    await backOff(res, attempt);
+  }
+}
+
+/**
+ * Fetch many cards at once via Scryfall's collection endpoint (75 max/call).
+ *
+ * Batches go **one at a time**, not as a `Promise.all`. Firing them together
+ * is what earned us sustained 429s from Vercel's shared egress address, and a
+ * 429 here silently returned no cards — a shared pairing rendered as 200 bare
+ * names with no art, no hover previews and no 2HG ratings, which is exactly
+ * what a visitor came for. Scryfall asks for 50–100ms between requests; a
+ * 100-card deck is two batches and a full team three, so honouring that costs
+ * a fraction of a second on the one render that misses the cache.
+ */
 export async function getCardsByNames(
   names: string[],
 ): Promise<ScryfallCard[]> {
@@ -336,38 +394,46 @@ export async function getCardsByNames(
     batches.push(unique.slice(i, i + 75));
   }
 
-  const results = await Promise.all(
-    batches.map(async (batch) => {
-      // Bounded like every other read here: this backs the rule hubs and the
-      // decklist importer, and a slow batch used to be able to park either.
-      const res = await withDeadline(
-        fetch(`${API}/cards/collection`, {
-          method: "POST",
-          headers: { ...HEADERS, "Content-Type": "application/json" },
-          body: JSON.stringify({
-            identifiers: batch.map((name) => ({
-              name: collectionLookupName(name),
-            })),
-          }),
-          // POST bodies aren't cached by Next. Callers that need this cached
-          // across requests go through `getCardsByNamesCached` in ./cards.
-          cache: "no-store",
-        }),
-        DEADLINE_MS,
-        "/cards/collection",
-      );
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        throw new Error(
-          `collection ${res.status} n=${batch.length} ${body.slice(0, 200)}`,
-        );
-      }
-      const json = (await res.json()) as { data: ScryfallCard[] };
-      return json.data;
-    }),
-  );
+  // One ceiling for the whole hydration, not one per batch — three sequential
+  // batches each allowed the full deadline could park a render for 24s.
+  const endBy = Date.now() + DEADLINE_MS;
+  const cards: ScryfallCard[] = [];
 
-  return results.flat();
+  for (const [i, batch] of batches.entries()) {
+    const remaining = endBy - Date.now();
+    if (remaining <= 0) {
+      console.error(
+        `getCardsByNames: out of time with ${batches.length - i} batches left`,
+      );
+      break;
+    }
+
+    if (i > 0) await new Promise((resolve) => setTimeout(resolve, 100));
+
+    try {
+      cards.push(
+        ...(await withDeadline(
+          postCollection(batch),
+          remaining,
+          "/cards/collection",
+        )),
+      );
+    } catch (error) {
+      /**
+       * A decklist that renders without art is degraded but still readable;
+       * one that throws is a dead share link, and share links are the only
+       * way this site spreads. So a failed batch costs its own cards and
+       * nothing else — but it is logged, because swallowing it in silence is
+       * precisely how a fully blank pairing page shipped unnoticed.
+       */
+      console.error(
+        `getCardsByNames: batch ${i + 1}/${batches.length} failed`,
+        error,
+      );
+    }
+  }
+
+  return cards;
 }
 
 /**

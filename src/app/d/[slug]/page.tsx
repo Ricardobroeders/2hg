@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { DatabaseNotConfiguredError } from "@/lib/db";
 import { getTeamBySlug, recordView } from "@/lib/db/teams";
+import { getCardsByNamesCached } from "@/lib/cards";
 import { isCrawler } from "@/lib/crawler";
-import { getCardsByNames } from "@/lib/scryfall";
 import { FORMATS } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { AdoptTeam } from "@/components/AdoptTeam";
@@ -60,7 +60,7 @@ export default async function SharedDeckPage(props: PageProps<"/d/[slug]">) {
   const names = [
     ...new Set([...team.a.entries.map((e) => e.name), ...team.a.commanders]),
   ];
-  const cardList = await getCardsByNames(names);
+  const cardList = await getCardsByNamesCached(names);
   const cards = new Map(cardList.map((c) => [c.name, c]));
 
   const total = team.a.entries.reduce((n, e) => n + e.quantity, 0);

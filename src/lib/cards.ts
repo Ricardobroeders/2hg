@@ -94,6 +94,14 @@ export const resolveCardBySlug = cache(
  * calls it out of static generation. The rule hubs are 18 fixed pages built
  * from a committed corpus; there is no reason for them to be dynamic. Caching
  * at the function level rather than the fetch level gets them back.
+ *
+ * The shared pairing and deck pages go through here for a different reason.
+ * They are `force-dynamic` because the *team* is a snapshot that must be
+ * fresh, but the cards in it are not: oracle text and art never change. Left
+ * uncached, every view of a share link re-POSTed the whole decklist to
+ * Scryfall, which rate-limited us into rendering pairings with no art at all.
+ * A day-long entry means a link that gets passed around costs one upstream
+ * hydration, not one per visitor.
  */
 export const getCardsByNamesCached = unstable_cache(
   async (names: string[]): Promise<ScryfallCard[]> => getCardsByNames(names),
