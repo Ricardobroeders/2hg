@@ -356,7 +356,12 @@ export async function getCardsByNames(
         DEADLINE_MS,
         "/cards/collection",
       );
-      if (!res.ok) return [];
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        throw new Error(
+          `collection ${res.status} n=${batch.length} ${body.slice(0, 200)}`,
+        );
+      }
       const json = (await res.json()) as { data: ScryfallCard[] };
       return json.data;
     }),
