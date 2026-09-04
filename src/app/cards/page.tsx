@@ -26,11 +26,16 @@ export async function generateMetadata({
     description: DESCRIPTION,
     /**
      * Query x six colour chips x four sorts x page is an unbounded crawl space
-     * of the same cards in a different order. Index the bare hub only; the
-     * filtered views still pass their links through, which is how a crawler
-     * reaches individual card pages from here.
+     * of the same cards in a different order. Index the bare hub only.
+     *
+     * `nofollow` as well, matching `Disallow: /cards?` in `robots.ts`: this
+     * surface is a tool for people, not a crawl path. Following it walked a
+     * crawler through thousands of paginated search renders and out into the
+     * ~26,000 card pages outside the corpus — each one a live Scryfall lookup,
+     * and each one `noindex` by the time it answered. The corpus cards worth
+     * crawling all sit on the rule hubs, which are indexable in their own right.
      */
-    robots: filtered ? { index: false, follow: true } : undefined,
+    robots: filtered ? { index: false, follow: false } : undefined,
     alternates: filtered ? undefined : { canonical: "/cards" },
     openGraph: filtered ? undefined : { url: "/cards" },
   };
@@ -56,6 +61,9 @@ const SORTS = [
  * Build a /cards URL, carrying the parts of the current view that aren't
  * being changed. Page deliberately resets on every filter or sort change —
  * staying on page 7 of a result set you just replaced is never what's wanted.
+ *
+ * Every link built from this carries `rel="nofollow"`. See `generateMetadata`
+ * above for why, and keep it on anything new that links into this URL space.
  */
 function href(state: {
   q: string;
@@ -134,6 +142,7 @@ export default async function CardsPage({
           <Link
             key={preset.label}
             href={href({ q: preset.query, sort, colors })}
+            rel="nofollow"
             className={chipClass(q === preset.query)}
           >
             {preset.label}
@@ -150,6 +159,7 @@ export default async function CardsPage({
             <Link
               key={color.code}
               href={href({ q, sort, colors: toggleColor(colors, color.code) })}
+              rel="nofollow"
               aria-pressed={active}
               className={`flex items-center gap-1.5 ${chipClass(active)}`}
             >
@@ -165,6 +175,7 @@ export default async function CardsPage({
         })}
         <Link
           href={href({ q, sort, colors: toggleColor(colors, COLORLESS) })}
+          rel="nofollow"
           aria-pressed={colors === COLORLESS}
           className={`flex items-center gap-1.5 ${chipClass(colors === COLORLESS)}`}
         >
@@ -180,6 +191,7 @@ export default async function CardsPage({
         {colors && (
           <Link
             href={href({ q, sort, colors: "" })}
+            rel="nofollow"
             className="px-1 text-xs text-zinc-500 underline-offset-4 hover:text-zinc-300 hover:underline"
           >
             Clear
@@ -251,6 +263,7 @@ export default async function CardsPage({
                 <Link
                   key={option.id}
                   href={href({ q, sort: option.id, colors })}
+                  rel="nofollow"
                   className={`rounded-md px-2.5 py-1.5 transition ${
                     sort === option.id
                       ? "bg-white/10 text-white"
@@ -279,6 +292,7 @@ export default async function CardsPage({
             {page > 1 && (
               <Link
                 href={href({ q, sort, colors, page: page - 1 })}
+                rel="nofollow"
                 className="rounded-lg px-4 py-2 text-zinc-300 ring-1 ring-inset ring-white/15 hover:bg-white/5"
               >
                 ← Previous
@@ -287,6 +301,7 @@ export default async function CardsPage({
             {result.hasMore && (
               <Link
                 href={href({ q, sort, colors, page: page + 1 })}
+                rel="nofollow"
                 className="rounded-lg px-4 py-2 text-zinc-300 ring-1 ring-inset ring-white/15 hover:bg-white/5"
               >
                 Next →

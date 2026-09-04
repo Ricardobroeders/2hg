@@ -125,8 +125,12 @@ async function SynergyRail({ card }: { card: ScryfallCard }) {
             deck.
           </p>
         </div>
+        {/* nofollow: this is the widest search URL on the site, and it was the
+            doorway a crawler used to enumerate every Commander-legal card one
+            paginated page at a time. Useful to a person, never to a bot. */}
         <Link
           href={`/cards?q=${encodeURIComponent(`id<=${card.color_identity.join("") || "c"}`)}`}
+          rel="nofollow"
           className="shrink-0 text-sm text-emerald-400 hover:text-emerald-300"
         >
           More →
