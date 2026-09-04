@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { DISCORD_URL } from "@/lib/site";
 import { LegalPage, Section } from "@/components/LegalPage";
+import { ConsentSettings } from "@/components/ConsentSettings";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -15,7 +16,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="2026-08-28"
+      updated="2026-09-04"
       intro="Two-Headed Giant is run by Ricardo Broeders, based in the Netherlands. This page describes exactly what the site collects and what it does not. It is deliberately specific rather than generic, because most of the answers here are “nothing”."
     >
       <Section heading="The short version">
@@ -25,9 +26,13 @@ export default function PrivacyPage() {
             <strong>without an account</strong>.
           </li>
           <li>
-            There are <strong>no analytics, no advertising and no tracking
-            scripts</strong> on this site. No third-party tag of any kind is
-            loaded.
+            We use Google Analytics, but{" "}
+            <strong>only after you allow it</strong>. Decline and nothing is
+            requested from Google.
+          </li>
+          <li>
+            There is <strong>no advertising and no ad tracking</strong>, whether
+            you allow analytics or not.
           </li>
           <li>We do not sell or share your data, and we send no marketing email.</li>
           <li>
@@ -59,6 +64,13 @@ export default function PrivacyPage() {
           never sent to us except when you press share.
         </p>
         <p>
+          <strong>If you allow analytics:</strong> Google Analytics records the
+          pages you view, what brought you to the site, roughly where you are at
+          country level, and what kind of device you use. It reaches us as
+          aggregate reports. We never send Google your name, your email or your
+          decklists.
+        </p>
+        <p>
           <strong>Server logs:</strong> our host records standard request logs
           including IP address, user agent and requested path. We do not use
           them to build a profile of you.
@@ -67,15 +79,30 @@ export default function PrivacyPage() {
 
       <Section heading="Cookies">
         <p>
-          We set cookies only to keep you signed in. There is a short-lived
-          cookie during the Google sign-in handshake, and a session cookie
-          afterwards. Both are strictly necessary — without them login cannot
-          work.
+          We set cookies to keep you signed in. There is a short-lived cookie
+          during the Google sign-in handshake, and a session cookie afterwards.
+          Both are strictly necessary — without them login cannot work.
         </p>
         <p>
-          There are <strong>no advertising, analytics or profiling cookies</strong>.
-          If you never sign in, we set no cookies at all.
+          Google Analytics sets its own cookies to recognise a returning
+          browser. Those are not necessary, so we ask first. The tag is not
+          loaded until you allow it, which means declining the question, or
+          ignoring it, sends no request to Google at all.
         </p>
+        <p>
+          There are <strong>no advertising or profiling cookies</strong>. Every
+          advertising signal Google offers is switched off permanently and is
+          not ours to turn on — we run no ads, so consent for them is never
+          asked and never granted.
+        </p>
+      </Section>
+
+      <Section heading="Your analytics choice">
+        <p>
+          The answer is stored in this browser, so it is per device and per
+          browser. Changing it here takes effect immediately.
+        </p>
+        <ConsentSettings />
       </Section>
 
       <Section heading="Who else sees your data">
@@ -90,8 +117,11 @@ export default function PrivacyPage() {
             request logs.
           </li>
           <li>
-            <strong>Google</strong> — only if you choose to sign in with Google.
-            Google tells us who you are; we tell Google nothing about you.
+            <strong>Google</strong> — for two separate things, each of which you
+            choose. Sign in with Google and Google tells us who you are. Allow
+            analytics and Google Analytics receives your IP address, the pages
+            you open and a cookie that recognises your browser on later visits.
+            Google may process that outside the EU.
           </li>
           <li>
             <strong>Scryfall</strong> provides card data and images. Card images
