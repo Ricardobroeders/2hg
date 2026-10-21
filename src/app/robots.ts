@@ -21,7 +21,7 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       disallow: [
-        "/api/", // no crawlable content, and /api/resolve is a POST surface
+        "/api/", // no crawlable content
         "/account", // session-only, already noindex
         "/auth/", // sign-in flow
         /**

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toSlug } from "@/lib/slug";
+import { autocomplete } from "@/lib/scryfall-browser";
 
 /** Debounced Scryfall typeahead. Enter runs a full search; a pick jumps to the card. */
 export function CardSearch({
@@ -34,12 +35,9 @@ export function CardSearch({
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/autocomplete?q=${encodeURIComponent(term)}`, {
-        signal: controller.signal,
-      })
-        .then((r) => r.json())
-        .then((json: { names: string[] }) => {
-          setResults({ q: term, names: json.names.slice(0, 8) });
+      autocomplete(term, controller.signal)
+        .then((found) => {
+          setResults({ q: term, names: found.slice(0, 8) });
           setActive(-1);
         })
         .catch(() => {});

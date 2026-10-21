@@ -22,9 +22,10 @@
  * earns; it cannot show anyone a number the page disagrees with.
  *
  * `card-details.json`, written alongside it, is the opposite and is documented
- * as such in `src/lib/card-details.ts`: it exists to keep card pages off the
- * network, so it *is* a cache, and only fields that move on Scryfall's
- * schedule belong in it. Prices are excluded on purpose.
+ * as such in `src/lib/card-details.ts`: a cache of the rule-matching cards,
+ * now only the fallback for when there is no database — the `cards` table,
+ * loaded by `scripts/import-cards.ts`, is what pages actually read. Prices are
+ * excluded on purpose.
  *
  * What it throws away is the point. Only ~15% of Commander-legal cards trip a
  * 2HG rule at all. The rest render "plays about the same in 2HG as it does in
@@ -38,10 +39,10 @@ import { createInterface } from "node:readline";
 import { Readable } from "node:stream";
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import { oracleText, type ScryfallCard } from "@/lib/scryfall";
+import type { ScryfallCard } from "@/lib/scryfall";
 import { scoreCard } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
-import { LEGALITY_CODE, LEGALITY_FORMATS } from "@/lib/card-legality";
+import { SKIP_LAYOUTS, detailFor, type CardDetail } from "@/lib/card-record";
 
 const BULK = "https://api.scryfall.com/bulk-data/oracle-cards";
 const OUT = join(process.cwd(), "src/data/card-corpus.json");
@@ -51,20 +52,6 @@ const HEADERS = {
   Accept: "application/json",
   "User-Agent": "TwoHeadedGiant/0.1 (https://2hg.dev)",
 };
-
-/** Layouts that aren't cards anyone would have a page for. */
-const SKIP_LAYOUTS = new Set([
-  "token",
-  "double_faced_token",
-  "emblem",
-  "art_series",
-  "vanguard",
-  "scheme",
-  "planar",
-  "augment",
-  "host",
-  "reversible_card",
-]);
 
 type CorpusCard = {
   name: string;
@@ -76,79 +63,6 @@ type CorpusCard = {
   /** Ids of the 2HG rules this card trips. Never empty — that's the filter. */
   rules: string[];
 };
-
-/**
- * Everything a card page needs to render without calling Scryfall.
- *
- * Unlike the corpus beside it, this **is** a cache, and it is the one place in
- * the codebase where that is true. Which means the honest constraint: only
- * fields that change on Scryfall's schedule (errata, ban announcements, a new
- * printing) belong here. Prices deliberately do not — they move daily, and a
- * committed price is a wrong price. The card page streams those in live.
- */
-type CardDetail = {
-  slug: string;
-  id: string;
-  oracleId: string;
-  name: string;
-  /** `mana_cost`; empty for lands and for the top level of a transform card. */
-  cost: string;
-  cmc: number;
-  type: string;
-  /** Already joined across faces exactly as `oracleText()` joins them. */
-  oracle: string;
-  colorIdentity: string[];
-  keywords: string[];
-  setCode: string;
-  setName: string;
-  rarity: string;
-  collectorNumber: string;
-  releasedAt: string;
-  layout: string;
-  uri: string;
-  /**
-   * The `normal` image, stored rather than derived from the card id.
-   *
-   * Scryfall's CDN path can be reconstructed from the id, which would save
-   * ~600 KB — but that scheme is not part of their documented API, and a
-   * silent change to it would break every image on the site at once. The
-   * bytes buy us a URL Scryfall actually gave us.
-   */
-  image: string | null;
-  rank: number | null;
-  /** One character per `LEGALITY_FORMATS` entry. See `LEGALITY_CODE`. */
-  legal: string;
-};
-
-function detailFor(card: ScryfallCard, slug: string): CardDetail {
-  return {
-    slug,
-    id: card.id,
-    oracleId: card.oracle_id,
-    name: card.name,
-    cost: card.mana_cost ?? "",
-    cmc: card.cmc,
-    type: card.type_line,
-    oracle: oracleText(card),
-    colorIdentity: card.color_identity,
-    keywords: card.keywords,
-    setCode: card.set,
-    setName: card.set_name,
-    rarity: card.rarity,
-    collectorNumber: card.collector_number,
-    releasedAt: card.released_at,
-    layout: card.layout,
-    uri: card.scryfall_uri,
-    image:
-      card.image_uris?.normal ??
-      card.card_faces?.[0]?.image_uris?.normal ??
-      null,
-    rank: card.edhrec_rank ?? null,
-    legal: LEGALITY_FORMATS.map(
-      (f) => LEGALITY_CODE[card.legalities?.[f] ?? "not_legal"] ?? "n",
-    ).join(""),
-  };
-}
 
 function eligible(card: ScryfallCard): boolean {
   if (card.legalities?.commander !== "legal") return false;

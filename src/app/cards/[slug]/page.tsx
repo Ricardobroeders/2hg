@@ -2,13 +2,7 @@ import { Suspense } from "react";
 import { notFound, permanentRedirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import {
-  OPTIONAL_DEADLINE_MS,
-  cardImage,
-  getCardByExactName,
-  oracleText,
-  type ScryfallCard,
-} from "@/lib/scryfall";
+import { cardImage, oracleText, type ScryfallCard } from "@/lib/scryfall";
 import { resolveCardBySlug } from "@/lib/cards";
 import { meetsIndexBar, prerenderSlugs } from "@/lib/corpus";
 import { scoreCard } from "@/lib/twohg-score";
@@ -16,7 +10,7 @@ import { synergyFor } from "@/lib/synergy";
 import { FORMATS } from "@/lib/team";
 import { JsonLd, breadcrumbSchema } from "@/components/JsonLd";
 import { ScoreBadge, ScoreMeter } from "@/components/ScoreBadge";
-import { AffiliateButtons } from "@/components/AffiliateButtons";
+import { LiveBuyButtons } from "@/components/LiveBuyButtons";
 import { AddToTeam } from "@/components/AddToTeam";
 import { CardTile } from "@/components/CardTile";
 import { ManaCost, ManaText } from "@/components/ManaSymbols";
@@ -25,9 +19,16 @@ import { ManaCost, ManaText } from "@/components/ManaSymbols";
  * Corpus cards get a prerendered head slice; everything else is ISR'd on first
  * request. `dynamicParams` is stated rather than left to default so nobody
  * "tidies" it away — turning it off would 404 every card outside the slice.
+ *
+ * Cached for 90 days (7,776,000s). Card text barely changes, and every
+ * regeneration is a function run, a database query and an ISR write — the
+ * daily-revalidate setting this replaced is what a crawler turned into a
+ * Vercel bill. The changes that do matter, errata and bans, don't wait the 90
+ * days: `scripts/import-cards.ts` asks `/api/revalidate` to refresh exactly
+ * the pages whose card changed.
  */
 export const dynamicParams = true;
-export const revalidate = 86400;
+export const revalidate = 7776000;
 
 export function generateStaticParams(): { slug: string }[] {
   return prerenderSlugs().map((slug) => ({ slug }));
@@ -39,7 +40,7 @@ export async function generateMetadata({
   const { slug } = await params;
   /**
    * A throw in here escapes the error boundary — `generateMetadata` runs
-   * before the page renders, so a Scryfall timeout during it produced a bare
+   * before the page renders, so a lookup failure during it produces a bare
    * 500 with none of `error.tsx` on it. Swallowing lets the page body do the
    * throwing, where the boundary can catch it and offer a retry.
    *
@@ -84,30 +85,12 @@ export async function generateMetadata({
 }
 
 /**
- * Buy links with live prices.
- *
- * Split out and suspended because prices are the one thing on this page that
- * genuinely can't be committed — they move daily, so a stored price is a wrong
- * price. The fallback is the same component with the artifact's price-less
- * card, which already renders "View" instead of a figure, so the rail is
- * complete and clickable from the first paint and only the numbers arrive late.
- */
-async function PricedBuyRail({ card }: { card: ScryfallCard }) {
-  const live = await getCardByExactName(
-    card.name,
-    OPTIONAL_DEADLINE_MS,
-  ).catch(() => null);
-  return <AffiliateButtons card={live ?? card} />;
-}
-
-/**
  * The "plays well beside it" rail.
  *
- * Suspended because it issues the widest Scryfall query on the site and used
- * to be awaited before *any* of this page rendered — a suggestion rail at the
- * very bottom was holding up the card's name, its art and its 2HG Rating. It
- * now streams in beside content that has already painted, and returns nothing
- * at all if Scryfall is too slow.
+ * Suspended because it runs the widest card query on the site, and a
+ * suggestion rail at the very bottom must never hold up the card's name, its
+ * art and its 2HG Rating. It streams in beside content that has already
+ * painted, and returns nothing at all if the query fails.
  */
 async function SynergyRail({ card }: { card: ScryfallCard }) {
   const synergy = await synergyFor(card);
@@ -212,15 +195,7 @@ export default async function CardPage({ params }: PageProps<"/cards/[slug]">) {
             <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-zinc-500">
               Buy this card
             </h2>
-            {/* Only an artifact card is missing prices. One resolved live has
-                them already, and refetching would be a request for nothing. */}
-            {resolved.fromArtifact ? (
-              <Suspense fallback={<AffiliateButtons card={card} />}>
-                <PricedBuyRail card={card} />
-              </Suspense>
-            ) : (
-              <AffiliateButtons card={card} />
-            )}
+            <LiveBuyButtons card={card} />
           </div>
         </aside>
 

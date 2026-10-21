@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
+    "cards:import": "tsx scripts/import-cards.ts",
     "seo:corpus": "tsx scripts/build-card-corpus.ts",
     "seo:corpus:check": "tsx scripts/build-card-corpus.ts --check",
     "topdeck:probe": "node --no-warnings --experimental-strip-types --env-file=.env.local scripts/topdeck-2hg-probe.ts"

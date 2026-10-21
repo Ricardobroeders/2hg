@@ -5,6 +5,7 @@ import { canBeCommander, type ScryfallCard } from "@/lib/scryfall";
 import { parseDecklist } from "@/lib/decklist";
 import { useTeam, type ImportMode } from "@/lib/team-store";
 import { FORMATS, type DeckSlot } from "@/lib/team";
+import { resolveCardNames } from "@/lib/scryfall-browser";
 
 type ImportResult = {
   cardCount: number;
@@ -125,26 +126,21 @@ export function DeckImporter({
     setResult(null);
 
     try {
-      const res = await fetch("/api/resolve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          names: [...new Set(importable.map((e) => e.name))],
-        }),
-      });
-
-      const json = (await res.json()) as {
-        resolved?: Record<string, ScryfallCard>;
-        notFound?: string[];
-        error?: string;
-      };
-
-      if (!res.ok) {
-        setError(json.error ?? "Import failed. Try again in a moment.");
+      const names = [...new Set(importable.map((e) => e.name))];
+      // A Commander deck is 100 cards; anything far past that is a paste
+      // accident, and each name costs a request against Scryfall's limits.
+      if (names.length > 500) {
+        setError("That list is too long — 500 distinct cards maximum.");
         return;
       }
 
-      const resolved = json.resolved ?? {};
+      const json = await resolveCardNames(names).catch(() => null);
+      if (!json) {
+        setError("Couldn't reach Scryfall. Try again in a moment.");
+        return;
+      }
+
+      const resolved = json.resolved;
 
       // Collapse to canonical names — two spellings of the same card, or the
       // same card listed once per printing, become one entry.

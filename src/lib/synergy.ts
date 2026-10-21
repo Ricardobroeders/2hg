@@ -8,25 +8,26 @@
  * replaces the query below.
  */
 
-import {
-  OPTIONAL_DEADLINE_MS,
-  searchCards,
-  type ScryfallCard,
-} from "./scryfall";
+import type { ScryfallCard } from "./scryfall";
+import { findCards, type CardFilter } from "./card-store";
 import { scoreCard } from "./twohg-score";
 
-/** Maps a 2HG rule to the Scryfall shape of cards that play alongside it. */
-const AXIS_QUERIES: Record<string, string> = {
-  "each-opponent": 'oracle:"each opponent"',
-  "opponent-sacrifice": 'oracle:"sacrifices a creature"',
-  "opponent-discard": 'oracle:"each opponent discards"',
-  "extra-turn": 'oracle:"take an extra turn"',
-  sweeper: 'oracle:"destroy all"',
-  "aoe-damage": 'oracle:"each opponent loses"',
-  fog: 'oracle:"prevent all combat damage"',
-  "symmetric-tax": 'oracle:"players can\'t"',
-  "team-protection": 'oracle:"target player"',
-  "cheap-interaction": "cmc<=2 (o:counter or o:destroy)",
+/**
+ * Maps a 2HG rule to the shape of cards that play alongside it. These were
+ * Scryfall query strings until card data moved into our own table; each one
+ * is the same search, written as a filter.
+ */
+const AXIS_FILTERS: Record<string, Omit<CardFilter, "identityWithin" | "limit">> = {
+  "each-opponent": { oracleAny: ["each opponent"] },
+  "opponent-sacrifice": { oracleAny: ["sacrifices a creature"] },
+  "opponent-discard": { oracleAny: ["each opponent discards"] },
+  "extra-turn": { oracleAny: ["take an extra turn"] },
+  sweeper: { oracleAny: ["destroy all"] },
+  "aoe-damage": { oracleAny: ["each opponent loses"] },
+  fog: { oracleAny: ["prevent all combat damage"] },
+  "symmetric-tax": { oracleAny: ["players can't"] },
+  "team-protection": { oracleAny: ["target player"] },
+  "cheap-interaction": { oracleAny: ["counter", "destroy"], maxCmc: 2 },
 };
 
 export type SynergyPick = {
@@ -37,37 +38,20 @@ export type SynergyPick = {
 
 export async function synergyFor(card: ScryfallCard): Promise<SynergyPick[]> {
   const score = scoreCard(card);
-  const axis = score.matched.find((m) => m.impact === "up" && AXIS_QUERIES[m.id]);
+  const axis = score.matched.find((m) => m.impact === "up" && AXIS_FILTERS[m.id]);
 
-  const identity = card.color_identity.length
-    ? `id<=${card.color_identity.join("")}`
-    : "id<=c";
-
-  // The card is excluded in JS rather than with `-name:"..."` in the query.
-  // Putting the name in the query made every card's search string unique, so
-  // nothing ever shared a cache entry — one live Scryfall search per card page,
-  // forever. Without it the whole site draws on roughly (11 axes x 32 colour
-  // identities) distinct queries, all of which hit the Next data cache.
-  const query = axis
-    ? `${AXIS_QUERIES[axis.id]} ${identity} legal:commander`
-    : `${identity} legal:commander -type:land`;
+  const filter: CardFilter = {
+    ...(axis ? AXIS_FILTERS[axis.id] : { excludeLands: true }),
+    identityWithin: card.color_identity,
+    // One spare, because the card itself is usually among the results.
+    limit: 7,
+  };
 
   /**
-   * A suggestion rail is never worth a broken page, so *every* failure here
-   * degrades to no rail — a timeout, a 429 that outlived its retries, a 5xx.
-   * These are the widest queries the site issues (`id<=wu legal:commander`
-   * matches thousands of cards) and they used to be awaited before any of the
-   * card page rendered. The card's own content is local now; this is an
-   * enhancement arriving beside it, and an enhancement that throws should
-   * simply not appear.
+   * A suggestion rail is never worth a broken page, so a database error
+   * degrades to no rail. The card's own content has already rendered beside it.
    */
-  const cards = await searchCards(query, {
-    order: "edhrec",
-    deadlineMs: OPTIONAL_DEADLINE_MS,
-  }).then(
-    (result) => result.cards,
-    () => [],
-  );
+  const cards = await findCards(filter).catch(() => []);
 
   const because = axis
     ? `Shares the "${axis.label.toLowerCase()}" axis`

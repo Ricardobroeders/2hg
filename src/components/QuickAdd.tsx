@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ScryfallCard } from "@/lib/scryfall";
 import { useTeam } from "@/lib/team-store";
 import type { DeckSlot } from "@/lib/team";
+import { autocomplete, cardsByNames } from "@/lib/scryfall-browser";
 
 /**
  * In-builder card search. Picking a name adds it straight to the target deck
@@ -29,12 +29,9 @@ export function QuickAdd({ slot }: { slot: DeckSlot }) {
 
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/autocomplete?q=${encodeURIComponent(term)}`, {
-        signal: controller.signal,
-      })
-        .then((r) => r.json())
-        .then((json: { names: string[] }) => {
-          setResults({ q: term, names: json.names.slice(0, 6) });
+      autocomplete(term, controller.signal)
+        .then((found) => {
+          setResults({ q: term, names: found.slice(0, 6) });
           setActive(-1);
         })
         .catch(() => {});
@@ -48,13 +45,7 @@ export function QuickAdd({ slot }: { slot: DeckSlot }) {
   async function pick(name: string) {
     setBusy(true);
     try {
-      const res = await fetch("/api/cards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ names: [name] }),
-      });
-      const json = (await res.json()) as { cards: ScryfallCard[] };
-      const card = json.cards[0];
+      const [card] = await cardsByNames([name]).catch(() => []);
       if (card) {
         addCard(card, slot);
         setQuery("");

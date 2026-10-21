@@ -5,13 +5,13 @@ import Link from "next/link";
 /**
  * Covers `/cards` and every card page beneath it.
  *
- * Both surfaces depend on Scryfall for the parts we don't hold locally, and
- * Scryfall's latency is episodic — so "temporarily unavailable" is a real
- * state this site has to be able to show. Before this existed the same
- * condition produced Next's default error screen with no way back.
+ * Card pages read the `cards` table, and a database that is waking up, out of
+ * free-tier compute or briefly unreachable is a real state this site has to
+ * be able to show. Before this existed the same condition produced Next's
+ * default error screen with no way back.
  *
- * Deliberately not a `notFound()`: a slow or erroring upstream is not a
- * missing card, and serving 404s during an outage is expensive to undo.
+ * Deliberately not a `notFound()`: an erroring database is not a missing
+ * card, and serving 404s during an outage is expensive to undo.
  */
 export default function Error({
   error,
@@ -26,8 +26,7 @@ export default function Error({
         Card data didn&apos;t load
       </h1>
       <p className="mt-3 text-sm leading-relaxed text-zinc-400">
-        Scryfall — where every card&apos;s text, art and price comes from — was
-        slow to answer. This is usually brief.
+        The card database was slow to answer. This is usually brief.
       </p>
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
         <button

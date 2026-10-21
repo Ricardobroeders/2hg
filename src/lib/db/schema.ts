@@ -22,6 +22,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -123,3 +124,71 @@ export const deckCards = pgTable(
 export type TeamRow = typeof teams.$inferSelect;
 export type DeckRow = typeof decks.$inferSelect;
 export type DeckCardRow = typeof deckCards.$inferSelect;
+
+/**
+ * Every playable card, loaded from Scryfall's daily bulk file by
+ * `scripts/import-cards.ts`.
+ *
+ * This table is why no page render calls Scryfall any more. Rendering a card
+ * used to mean a live API call from Vercel's shared egress address, and a
+ * crawler walking card pages turned that into Scryfall 429s, 30–90s hangs and
+ * a Vercel bill for functions held open waiting. Scryfall's own guidance is to
+ * use bulk data for exactly this.
+ *
+ * Columns mirror `CardDetail` in `src/lib/card-record.ts` one-for-one, so a row
+ * converts to a `ScryfallCard` with the same function the committed artifact
+ * uses. ~33,000 rows, tens of MB — comfortably inside the free tier's 1 GB.
+ * No prices: see `CardDetail`.
+ */
+export const cards = pgTable(
+  "cards",
+  {
+    oracleId: text("oracle_id").primaryKey(),
+    /**
+     * Unique, unlike names: the importer settles the ~45 slugs two cards share
+     * (Un-set variants, mostly) before writing. See `prefersForSlug`.
+     */
+    slug: text("slug").notNull(),
+    name: text("name").notNull(),
+    /** `normalizeName(name)` — how pasted and stored decklist names match. */
+    lookupKey: text("lookup_key").notNull(),
+    id: text("id").notNull(),
+    cost: text("cost").notNull(),
+    cmc: real("cmc").notNull(),
+    type: text("type").notNull(),
+    oracle: text("oracle").notNull(),
+    colorIdentity: text("color_identity").array().notNull(),
+    keywords: text("keywords").array().notNull(),
+    setCode: text("set_code").notNull(),
+    setName: text("set_name").notNull(),
+    rarity: text("rarity").notNull(),
+    collectorNumber: text("collector_number").notNull(),
+    releasedAt: text("released_at").notNull(),
+    layout: text("layout").notNull(),
+    uri: text("uri").notNull(),
+    image: text("image"),
+    rank: integer("rank"),
+    legal: text("legal").notNull(),
+    /** Denormalised from `legal` so the shelf and synergy queries can filter on it. */
+    commanderLegal: boolean("commander_legal").notNull(),
+    /**
+     * Hash of everything a card page renders — so not `rank`, which moves
+     * daily for thousands of cards. The importer compares it to decide which
+     * pages to refresh; a rank-only change updates the row and nothing else.
+     */
+    contentHash: text("content_hash").notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("cards_slug_idx").on(t.slug),
+    index("cards_name_idx").on(t.name),
+    index("cards_lookup_key_idx").on(t.lookupKey),
+    // Typo-tolerant slug lookups for URLs that aren't canonical. Needs
+    // pg_trgm, created by the migration before this index.
+    index("cards_slug_trgm_idx").using("gin", sql`${t.slug} gin_trgm_ops`),
+  ],
+);
+
+export type CardRow = typeof cards.$inferSelect;

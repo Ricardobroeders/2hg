@@ -33,6 +33,7 @@ import {
   type TeamPairing,
   type ValidationResult,
 } from "./team";
+import { cardsByNames } from "./scryfall-browser";
 
 const STORAGE_KEY = "2hg:team:v1";
 const CARD_CACHE_KEY = "2hg:cards:v1";
@@ -260,17 +261,14 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
     if (missing.length === 0) return;
 
     let cancelled = false;
-    fetch("/api/cards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ names: missing }),
-    })
-      .then((r) => (r.ok ? r.json() : { cards: [] }))
-      .then((json: { cards: ScryfallCard[] }) => {
+    // A failed request throws and lands in the catch, so a rate-limited
+    // moment is never recorded as cards that don't exist.
+    cardsByNames(missing)
+      .then((found) => {
         if (cancelled) return;
         update((s) => {
           const nextCards = { ...s.cards };
-          for (const card of json.cards) nextCards[card.name] = card;
+          for (const card of found) nextCards[card.name] = card;
           // Anything we asked for and didn't get back is recorded so the
           // effect doesn't request it again on every render.
           const stillMissing = missing.filter((n) => !(n in nextCards));

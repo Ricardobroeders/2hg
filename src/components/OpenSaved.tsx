@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ScryfallCard } from "@/lib/scryfall";
 import type { TeamPairing } from "@/lib/team";
 import { useTeam, type DeckRefs, type SharedRef } from "@/lib/team-store";
+import { cardsByNames } from "@/lib/scryfall-browser";
 
 /**
  * `/deck-builder?edit={slug}` — load something you already saved back into the
@@ -104,14 +105,9 @@ export function OpenSaved() {
 
         // Hydrate card data up front so the builder renders scores immediately
         // rather than flashing an unrated list while the store backfills.
-        const cardRes = await fetch("/api/cards", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ names }),
-        });
-        const cards: ScryfallCard[] = cardRes.ok
-          ? ((await cardRes.json()) as { cards: ScryfallCard[] }).cards
-          : [];
+        // A Scryfall hiccup isn't worth failing the open over — the store
+        // backfills anything missing once the builder mounts.
+        const cards: ScryfallCard[] = await cardsByNames(names).catch(() => []);
 
         const ref: SharedRef = { slug, editToken: knownToken };
         replaceTeam(

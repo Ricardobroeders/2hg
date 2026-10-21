@@ -2,57 +2,27 @@
  * Reader for the committed card-details artifact.
  *
  * SERVER ONLY, and more emphatically than the corpus beside it: this file is
- * ~4 MB. It must never be imported from a `"use client"` module, and it is
- * imported only by the card page.
+ * ~4 MB. It must never be imported from a `"use client"` module.
  *
- * **This one is a cache, not an index** — the opposite of `./corpus`, and the
- * only place in the codebase where that is true. It exists because card pages
- * were hanging: rendering one meant two live Scryfall calls, Scryfall's
- * latency is episodic, and nothing bounded the wait. Measured 2026-09-01, cold
- * card pages took 30–90s while the same page served in 0.4s once ISR had it.
- * Reading a committed artifact instead takes ~7ms for all 5,620 cards.
+ * **Demoted to a fallback on 2026-10-21.** Card data now lives in the `cards`
+ * table, loaded daily from Scryfall's bulk file — see `./card-store`. This
+ * artifact still serves two jobs there:
  *
- * What that buys, and what it costs:
+ * - The site keeps building and running with no `DATABASE_URL` (a fresh
+ *   clone, a preview without a branch database). Card pages for the ~5,600
+ *   rule-matching cards still render; the long tail 404s.
+ * - A database error degrades a shared pairing to partial art rather than to
+ *   bare names. See `hydrateDecklist` in `./cards`.
  *
- * - The whole card page shell — name, cost, type, oracle text, art, legality
- *   and the 2HG Rating — renders with **zero** network calls.
- * - Prices are deliberately absent. They move daily, so a committed price is a
- *   wrong price; the page streams them in live instead.
- * - A card whose oracle text is errata'd, or whose legality changes on a ban
- *   announcement, shows the old value until `npm run seo:corpus` reruns. That
- *   is the trade, and it is why only Scryfall-schedule fields live here.
- *
- * Cards that trip no 2HG rule are not in the corpus and so are not here
- * either. Those pages fall back to the live path — they are `noindex` and
- * essentially unlinked, so the tail stays on the slow road by design.
+ * It covers only the cards that trip a 2HG rule, so anything served from here
+ * is partial by construction. Rebuilt by `npm run seo:corpus`.
  */
 
 import details from "@/data/card-details.json";
-import { decodeLegalities } from "./card-legality";
-import type { ScryfallCard } from "./scryfall";
+import type { CardDetail } from "./card-record";
 
-export type CardDetail = {
-  slug: string;
-  id: string;
-  oracleId: string;
-  name: string;
-  cost: string;
-  cmc: number;
-  type: string;
-  oracle: string;
-  colorIdentity: string[];
-  keywords: string[];
-  setCode: string;
-  setName: string;
-  rarity: string;
-  collectorNumber: string;
-  releasedAt: string;
-  layout: string;
-  uri: string;
-  image: string | null;
-  rank: number | null;
-  legal: string;
-};
+export type { CardDetail } from "./card-record";
+export { detailToCard } from "./card-record";
 
 const DETAILS = details.cards as CardDetail[];
 
@@ -68,8 +38,8 @@ const BY_NAME = new Map(DETAILS.map((card) => [card.name, card]));
  * Look a card up by its canonical Scryfall name — the join key everywhere
  * decks are concerned, since a decklist stores names and never ids.
  *
- * This is the fallback the shared pairing pages use when Scryfall will not
- * answer. It covers only the ~18% of Commander-legal cards that trip a 2HG
+ * This is the fallback the shared pairing pages use when the database will
+ * not answer. It covers only the ~18% of Commander-legal cards that trip a 2HG
  * rule, so a decklist hydrated this way is partial by construction; it exists
  * so an outage costs a visitor some art rather than all of it.
  */
@@ -77,44 +47,7 @@ export function cardDetailByName(name: string): CardDetail | undefined {
   return BY_NAME.get(name);
 }
 
-/**
- * Rebuild a `ScryfallCard` from a stored detail.
- *
- * Every consumer — `scoreCard`, `CardTile`, `AddToTeam`, `AffiliateButtons`,
- * `cardImage`, `oracleText` — keeps taking a `ScryfallCard`, so nothing
- * downstream has to know the data came from disk. The fields are Scryfall's
- * own values, not stand-ins, which is why the artifact stores dull things like
- * `rarity` and `collectorNumber`: a half-populated card would be a trap for
- * whoever next reads one of these fields and finds a plausible lie.
- *
- * `prices` is the single deliberate exception. It is always empty here, and
- * `AffiliateButtons` already renders "View" rather than a figure when a price
- * is missing, so the omission degrades into an honest label rather than a
- * stale number.
- */
-export function detailToCard(detail: CardDetail): ScryfallCard {
-  return {
-    id: detail.id,
-    oracle_id: detail.oracleId,
-    name: detail.name,
-    lang: "en",
-    released_at: detail.releasedAt,
-    scryfall_uri: detail.uri,
-    layout: detail.layout,
-    mana_cost: detail.cost || undefined,
-    cmc: detail.cmc,
-    type_line: detail.type,
-    // Stored already joined across faces, so `oracleText()` returns it as-is.
-    oracle_text: detail.oracle,
-    color_identity: detail.colorIdentity,
-    keywords: detail.keywords,
-    legalities: decodeLegalities(detail.legal),
-    set: detail.setCode,
-    set_name: detail.setName,
-    collector_number: detail.collectorNumber,
-    rarity: detail.rarity,
-    edhrec_rank: detail.rank ?? undefined,
-    image_uris: detail.image ? { normal: detail.image } : undefined,
-    prices: {},
-  };
+/** Every artifact card, for the in-memory search `./card-store` falls back to. */
+export function allCardDetails(): readonly CardDetail[] {
+  return DETAILS;
 }

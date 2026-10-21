@@ -6,7 +6,8 @@ import { auth } from "@/lib/auth/server";
 import { signOut } from "@/app/auth/sign-in/actions";
 import { isDatabaseConfigured } from "@/lib/db";
 import { listTeamsByOwner } from "@/lib/db/teams";
-import { cardImage, getCardsByNames } from "@/lib/scryfall";
+import { cardImage } from "@/lib/scryfall";
+import { cardsByNames } from "@/lib/card-store";
 import { FORMATS } from "@/lib/team";
 
 export const metadata: Metadata = {
@@ -29,12 +30,12 @@ export default async function AccountPage() {
     ? await listTeamsByOwner(user.id).catch(() => [])
     : [];
 
-  // One Scryfall round trip for every commander on the page, rather than one
-  // per row. Failure is non-fatal — the list still renders without art.
+  // One query for every commander on the page, rather than one per row.
+  // Failure is non-fatal — the list still renders without art.
   const commanderNames = [...new Set(pairings.flatMap((p) => p.commanders))];
   const art = new Map<string, string>();
   if (commanderNames.length) {
-    const cards = await getCardsByNames(commanderNames).catch(() => []);
+    const cards = await cardsByNames(commanderNames).catch(() => []);
     for (const c of cards) {
       // Full card, small size — recognisable at thumbnail scale without
       // pulling a 500px image per row.

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTeam } from "@/lib/team-store";
-import { canBeCommander, cardImage, type ScryfallCard } from "@/lib/scryfall";
+import { canBeCommander, cardImage } from "@/lib/scryfall";
 import type { DeckSlot } from "@/lib/team";
+import { autocomplete, cardsByNames } from "@/lib/scryfall-browser";
 
 /**
  * Choose a deck's commander.
@@ -40,13 +41,8 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
     if (term.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/autocomplete?q=${encodeURIComponent(term)}`, {
-        signal: controller.signal,
-      })
-        .then((r) => r.json())
-        .then((json: { names: string[] }) =>
-          setResults({ q: term, names: json.names.slice(0, 6) }),
-        )
+      autocomplete(term, controller.signal)
+        .then((found) => setResults({ q: term, names: found.slice(0, 6) }))
         .catch(() => {});
     }, 150);
     return () => {
@@ -69,13 +65,7 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/cards", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ names: [name] }),
-      });
-      const json = (await res.json()) as { cards?: ScryfallCard[] };
-      const card = json.cards?.[0];
+      const [card] = await cardsByNames([name]);
 
       if (!card) {
         setError("Couldn't find that card.");
@@ -90,7 +80,7 @@ export function CommanderPicker({ slot }: { slot: DeckSlot }) {
       setOpen(false);
       setQuery("");
     } catch {
-      setError("Couldn't reach the server. Try again.");
+      setError("Couldn't reach Scryfall. Try again.");
     } finally {
       setBusy(false);
     }

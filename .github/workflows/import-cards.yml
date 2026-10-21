@@ -1,0 +1,39 @@
+# Daily card import: Scryfall's bulk file -> the `cards` table in Neon.
+#
+# Runs here rather than as a Vercel Cron on purpose. The job streams a 25 MB
+# download and parses ~200 MB of JSON — on Vercel that is billed function time,
+# on a public repo's Actions runner it is free. See scripts/import-cards.ts.
+#
+# Secrets (repo settings -> Secrets and variables -> Actions):
+#   DATABASE_URL       Neon production connection string
+#   REVALIDATE_SECRET  must equal the Vercel production env var of the same name
+name: Import cards
+
+on:
+  schedule:
+    # Scryfall rebuilds its bulk files around 09:00 UTC.
+    - cron: "30 10 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: import-cards
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run cards:import
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          # Where /api/revalidate lives. Change with the custom domain — it is
+          # step 6 of the checklist in CLAUDE.md.
+          SITE_URL: https://2hg-ricardo-broeders-projects.vercel.app

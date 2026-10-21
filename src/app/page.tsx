@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { searchCards } from "@/lib/scryfall";
+import { findCards } from "@/lib/card-store";
 import { scoreCard } from "@/lib/twohg-score";
 import { FORMATS } from "@/lib/team";
 import { JsonLd, webSiteSchema } from "@/components/JsonLd";
@@ -8,8 +8,9 @@ import { CardSearch } from "@/components/CardSearch";
 import { CardTile } from "@/components/CardTile";
 
 /**
- * Shelves are curated Scryfall queries rather than hand-written card lists, so
- * the front page stays current as new sets legalise new "each opponent" cards.
+ * Shelves are curated queries over the `cards` table rather than hand-written
+ * card lists, so the front page stays current as new sets legalise new "each
+ * opponent" cards.
  */
 /**
  * Each shelf's "see all" goes to its rule hub rather than a `/cards?q=…` URL.
@@ -22,23 +23,29 @@ const SHELVES = [
     title: "Doubled by two opponents",
     blurb:
       `Every 'each opponent' clause resolves twice against one shared ${FORMATS.commander.startingLife}-life pool. These are the cards that quietly double in power.`,
-    query: 'oracle:"each opponent" -type:land legal:commander',
+    filter: { oracleAny: ["each opponent"], excludeLands: true },
   },
   {
     hub: "sweeper",
     title: "Two boards, one card",
     blurb:
       "You're answering two developed battlefields. Sweepers are premium removal here, not a last resort.",
-    query: 'oracle:"destroy all creatures" legal:commander',
+    filter: { oracleAny: ["destroy all creatures"] },
   },
   {
     hub: "extra-turn",
     title: "Shared turns, doubled tempo",
     blurb:
       "Teammates take one turn together, so an extra turn is an extra turn for both players.",
-    query: 'oracle:"take an extra turn" legal:commander',
+    filter: { oracleAny: ["take an extra turn"] },
   },
 ] as const;
+
+/**
+ * A week, not the 90 days card pages get: this is one page, and it is where a
+ * newly released "each opponent" card should show up soonest.
+ */
+export const revalidate = 604800;
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -49,7 +56,7 @@ export default async function HomePage() {
   const shelves = await Promise.all(
     SHELVES.map(async (shelf) => ({
       ...shelf,
-      cards: (await searchCards(shelf.query, { order: "edhrec" })).cards.slice(0, 6),
+      cards: await findCards({ ...shelf.filter, limit: 6 }),
     })),
   );
 

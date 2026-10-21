@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCardsByNamesCached } from "@/lib/cards";
+import { cardsByNames } from "@/lib/card-store";
 import { cardsForRule, CORPUS_UPDATED_AT } from "@/lib/corpus";
 import { hubById, listHubs, relatedHubs } from "@/lib/lists";
 import { toSlug } from "@/lib/slug";
@@ -10,9 +10,13 @@ import { JsonLd, breadcrumbSchema, collectionSchema, faqSchema } from "@/compone
 
 /** 18 known rules; anything else is genuinely not a page. */
 export const dynamicParams = false;
-export const revalidate = 86400;
+/**
+ * Weekly. Which cards a hub lists is fixed by the committed corpus until the
+ * next deploy; only their art and text can move, and that slowly.
+ */
+export const revalidate = 604800;
 
-/** How many cards get full art. 60 ≤ Scryfall's 75-card collection limit, so one request. */
+/** How many cards get full art. */
 const SHOWN = 60;
 /** The rest are plain links — no extra fetches, and the crawl path into the tail. */
 const LISTED = 240;
@@ -50,9 +54,9 @@ export default async function ListPage({ params }: PageProps<"/lists/[rule]">) {
   const ranked = cardsForRule(hub.id);
   const featured = ranked.slice(0, SHOWN);
 
-  // One POST for the whole grid. Scores render live from these, not from the
+  // One query for the whole grid. Scores render live from these, not from the
   // corpus — the corpus only decided which cards belong here.
-  const hydrated = await getCardsByNamesCached(featured.map((card) => card.name));
+  const hydrated = await cardsByNames(featured.map((card) => card.name));
   const byName = new Map(hydrated.map((card) => [card.name, card]));
   const cards = featured
     .map((card) => byName.get(card.name))

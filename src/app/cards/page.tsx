@@ -1,9 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { listHubs } from "@/lib/lists";
-import { searchCards } from "@/lib/scryfall";
-import { scoreCard } from "@/lib/twohg-score";
-import { CardTile } from "@/components/CardTile";
+import { SearchResults } from "@/components/SearchResults";
 import {
   COLORLESS,
   COLORS,
@@ -31,8 +29,10 @@ export async function generateMetadata({
      * `nofollow` as well, matching `Disallow: /cards?` in `robots.ts`: this
      * surface is a tool for people, not a crawl path. Following it walked a
      * crawler through thousands of paginated search renders and out into the
-     * ~26,000 card pages outside the corpus — each one a live Scryfall lookup,
-     * and each one `noindex` by the time it answered. The corpus cards worth
+     * ~26,000 card pages outside the corpus — each one, back then, a live
+     * Scryfall lookup on our server, and each one `noindex` by the time it
+     * answered. Results now load in the browser, so a crawler that ignores
+     * robots.txt finds no card links here at all. The corpus cards worth
      * crawling all sit on the rule hubs, which are indexable in their own right.
      */
     robots: filtered ? { index: false, follow: false } : undefined,
@@ -92,21 +92,6 @@ export default async function CardsPage({
   // Colours are a real query on their own — clicking "Red" with an empty
   // search box should show red cards, not the empty state.
   const query = [q, colorQuery(colors)].filter(Boolean).join(" ");
-
-  const result = query
-    ? await searchCards(query, {
-        page,
-        order: sort === "2hg" ? "edhrec" : sort,
-      })
-    : null;
-
-  // The 2HG rating is computed here, not by Scryfall, so sorting by it happens
-  // over the fetched page rather than the whole result set.
-  const cards = result
-    ? sort === "2hg"
-      ? [...result.cards].sort((a, b) => scoreCard(b).score - scoreCard(a).score)
-      : result.cards
-    : [];
 
   const chipClass = (active: boolean) =>
     `rounded-full px-3 py-1.5 text-xs ring-1 ring-inset transition ${
@@ -199,7 +184,7 @@ export default async function CardsPage({
         )}
       </div>
 
-      {!result && (
+      {!query && (
         <p className="mt-8 max-w-2xl text-sm leading-relaxed text-zinc-400">
           Search accepts full{" "}
           <a
@@ -218,7 +203,7 @@ export default async function CardsPage({
       {/* Without this the page renders no card links at all until someone types
           a query, which left every card page orphaned. The hubs are the browse
           surface, and unlike a preset query they're indexable in their own right. */}
-      {!result && (
+      {!query && (
         <section className="mt-10">
           <div className="flex items-baseline justify-between gap-4">
             <h2 className="text-lg font-semibold text-white">Browse by what 2HG changes</h2>
@@ -250,65 +235,20 @@ export default async function CardsPage({
         </section>
       )}
 
-      {result && (
-        <>
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
-            <p className="text-sm text-zinc-500">
-              {result.totalCards.toLocaleString()} card
-              {result.totalCards === 1 ? "" : "s"}
-              {result.hasMore && " · showing page " + page}
-            </p>
-            <div className="flex gap-1 text-xs">
-              {SORTS.map((option) => (
-                <Link
-                  key={option.id}
-                  href={href({ q, sort: option.id, colors })}
-                  rel="nofollow"
-                  className={`rounded-md px-2.5 py-1.5 transition ${
-                    sort === option.id
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-500 hover:text-white"
-                  }`}
-                >
-                  {option.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          {cards.length === 0 ? (
-            <p className="mt-12 text-center text-sm text-zinc-500">
-              No cards matched that query.
-            </p>
-          ) : (
-            <div className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
-              {cards.map((card) => (
-                <CardTile key={card.id} card={card} />
-              ))}
-            </div>
-          )}
-
-          <div className="mt-10 flex justify-center gap-3 text-sm">
-            {page > 1 && (
-              <Link
-                href={href({ q, sort, colors, page: page - 1 })}
-                rel="nofollow"
-                className="rounded-lg px-4 py-2 text-zinc-300 ring-1 ring-inset ring-white/15 hover:bg-white/5"
-              >
-                ← Previous
-              </Link>
-            )}
-            {result.hasMore && (
-              <Link
-                href={href({ q, sort, colors, page: page + 1 })}
-                rel="nofollow"
-                className="rounded-lg px-4 py-2 text-zinc-300 ring-1 ring-inset ring-white/15 hover:bg-white/5"
-              >
-                Next →
-              </Link>
-            )}
-          </div>
-        </>
+      {query && (
+        <SearchResults
+          // Remount per view, so a new query never flashes the old results.
+          key={`${query}|${sort}|${page}`}
+          query={query}
+          page={page}
+          sort={sort}
+          sorts={SORTS.map((option) => ({
+            ...option,
+            href: href({ q, sort: option.id, colors }),
+          }))}
+          prevHref={page > 1 ? href({ q, sort, colors, page: page - 1 }) : null}
+          nextHref={href({ q, sort, colors, page: page + 1 })}
+        />
       )}
     </div>
   );
