@@ -15,6 +15,11 @@ const COLUMNS: readonly FooterColumn[] = [
     links: [
       { href: "/", label: "Home" },
       { href: "/rules", label: "Rules" },
+      // Sitewide links into the format pages, which is where rules searches
+      // land. Same reasoning as Top Lists below: crawl paths from every page.
+      { href: "/rules/commander", label: "2HG Commander rules" },
+      { href: "/rules/sealed", label: "2HG Sealed rules" },
+      { href: "/rules/draft", label: "2HG Draft rules" },
       { href: "/account", label: "Account" },
     ],
   },

@@ -10,6 +10,7 @@ Every indexable route, what makes it unique, and whether it is advertised.
 | `/lists` | Static | `/lists` | `BreadcrumbList` | Yes |
 | `/lists/[rule]` | 18 prerendered, ISR 24h | `/lists/{id}` | `BreadcrumbList` | Only if ≥10 cards |
 | `/rules` | Static | `/rules` | `FAQPage` + `BreadcrumbList` | Yes |
+| `/rules/[format]` | 3 prerendered (`commander`, `sealed`, `draft`), `dynamicParams: false` | `/rules/{format}` | `FAQPage` + `BreadcrumbList` | Yes — copy in `src/content/rules/` |
 | `/deck-builder` | Static shell | `/deck-builder` | — | Yes |
 | `/privacy`, `/terms` | Static | self | — | Yes |
 | `/t/[slug]`, `/d/[slug]` | Dynamic | self | — | **No** — see below |

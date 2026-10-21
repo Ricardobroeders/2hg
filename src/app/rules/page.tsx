@@ -1,55 +1,74 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  FORMATS,
-  REFERENCE_VARIANTS,
-  SHARED_RULES,
-  type FormatRules,
-} from "@/lib/team";
+import { FORMATS, LIMITED_FORMATS, SHARED_RULES } from "@/lib/team";
+import { RULES_FORMATS } from "@/content/rules";
+import { OVERVIEW, OVERVIEW_FAQ, OVERVIEW_SOURCES } from "@/content/rules/overview";
 import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { FaqAccordion, SourceList } from "@/components/FaqAccordion";
 
 export const metadata: Metadata = {
-  title: "Two-Headed Giant rules",
-  description:
-    "How Two-Headed Giant works: shared life totals, shared turns, and the deckbuilding rules for 2HG Commander.",
+  title: OVERVIEW.title,
+  description: OVERVIEW.description,
   alternates: { canonical: "/rules" },
   openGraph: { url: "/rules" },
 };
 
-/**
- * The reference page. Everything here renders from `src/lib/team.ts` so the
- * rules the builder enforces and the rules we publish can't drift apart —
- * correct the data, not the prose.
- */
-/**
- * Commander only, deliberately.
- *
- * 2HG Constructed is effectively dead as organised play, and printing its rules
- * beside Commander's was doing real harm: its unified-deck rule is the single
- * thing people wrongly believe applies to 2HG Commander, and showing both made
- * that easier to believe, not harder.
- *
- * It stays in `FORMATS` — pairings saved as Constructed must keep validating
- * against their own rules — it just isn't published here any more.
- */
-const PUBLISHED: FormatRules[] = [FORMATS.commander];
+const commander = FORMATS.commander;
+const sealed = LIMITED_FORMATS.sealed;
+const draft = LIMITED_FORMATS.draft;
 
-function StatRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-white/5 py-2 last:border-0">
-      <dt className="text-sm text-zinc-400">{label}</dt>
-      <dd className="text-sm font-medium tabular-nums text-white">{value}</dd>
-    </div>
-  );
-}
+/**
+ * The overview: what every variant shares, how the variants differ, and a way
+ * into each one. Every number renders from `src/lib/team.ts` — correct the
+ * data, not the prose.
+ *
+ * 2HG Constructed is deliberately not a column. Its Unified Deck Construction
+ * rule is the single thing people wrongly believe applies to 2HG Commander,
+ * and a table setting the two side by side makes that easier to believe. It
+ * stays in `FORMATS` so saved Constructed pairings keep validating.
+ */
+const COMPARISON: { label: string; values: [string, string, string] }[] = [
+  {
+    label: "Shared starting life",
+    values: [`${commander.startingLife}`, `${sealed.startingLife}`, `${draft.startingLife}`],
+  },
+  {
+    label: "Each deck",
+    values: [
+      `${commander.minDeckSize} cards, singleton`,
+      `${sealed.minDeckSize}+ from one pool`,
+      `${draft.minDeckSize}+ from the drafted pool`,
+    ],
+  },
+  { label: "Built", values: ["At home", "At the event", "At the event"] },
+  {
+    label: "Same card in both decks",
+    values: ["Allowed", "One copy, one deck", "One copy, one deck"],
+  },
+  {
+    label: "Commander damage",
+    values: [`${commander.commanderDamage} from one commander`, "—", "—"],
+  },
+  {
+    label: "Poison to lose",
+    values: [`${commander.poisonToLose}`, `${sealed.poisonToLose}`, `${draft.poisonToLose}`],
+  },
+  { label: "Where it's played", values: ["Monthly Commander Night", "Prereleases", "Store drafts"] },
+];
+
+/** One line under each format card, drawn from the same data. */
+const CARD_STATS: Record<string, string> = {
+  commander: `${commander.startingLife} life · ${commander.minDeckSize}-card decks · no team limit`,
+  sealed: `${sealed.startingLife} life · two ${sealed.minDeckSize}-card decks · one pool`,
+  draft: `${draft.startingLife} life · ${draft.boostersPerTeam} boosters per team · shared picks`,
+};
 
 export default function RulesPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      {/* SHARED_RULES is already a list of questions with answers, so the FAQ
-          markup renders from the same data as the prose below it. */}
-      <JsonLd data={faqSchema(SHARED_RULES)} />
+      <JsonLd data={faqSchema(OVERVIEW_FAQ)} />
       <JsonLd data={breadcrumbSchema([{ name: "Rules", path: "/rules" }])} />
+
       <header>
         <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/80">
           Reference
@@ -57,21 +76,52 @@ export default function RulesPage() {
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
           How Two-Headed Giant works
         </h1>
-        <p className="mt-4 text-base leading-relaxed text-zinc-400">
-          Two teams of two. Each team shares one life total and takes one turn
-          together. That&apos;s the whole format — and it&apos;s enough to
-          change what half the cards in Magic are worth.
-        </p>
+        <div className="mt-4 space-y-3">
+          {OVERVIEW.intro.map((paragraph) => (
+            <p key={paragraph} className="text-base leading-relaxed text-zinc-400">
+              {paragraph}
+            </p>
+          ))}
+        </div>
       </header>
 
-      <section className="mt-12">
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold tracking-tight text-white">
+          Three ways to play, one set of core rules
+        </h2>
+        <ul className="mt-5 grid gap-3 sm:grid-cols-3">
+          {RULES_FORMATS.map((entry) => (
+            <li key={entry.slug}>
+              <Link
+                href={`/rules/${entry.slug}`}
+                className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition hover:border-emerald-400/40 hover:bg-white/[0.04]"
+              >
+                <span className="text-base font-semibold text-white">{entry.label}</span>
+                <span className="mt-2 text-xs leading-relaxed tabular-nums text-zinc-400">
+                  {CARD_STATS[entry.slug]}
+                </span>
+                <span className="mt-auto pt-4 text-sm text-emerald-400">
+                  {entry.label} rules →
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="mt-14">
         <h2 className="text-xl font-semibold tracking-tight text-white">
           The rules every variant shares
         </h2>
         <dl className="mt-5 space-y-5">
           {SHARED_RULES.map((rule) => (
             <div key={rule.title}>
-              <dt className="text-sm font-semibold text-white">{rule.title}</dt>
+              <dt className="flex flex-wrap items-baseline gap-x-2 text-sm font-semibold text-white">
+                {rule.title}
+                <span className="font-mono text-[11px] font-normal text-zinc-600">
+                  {rule.ref}
+                </span>
+              </dt>
               <dd className="mt-1 text-sm leading-relaxed text-zinc-400">
                 {rule.body}
               </dd>
@@ -82,135 +132,42 @@ export default function RulesPage() {
 
       <section className="mt-14">
         <h2 className="text-xl font-semibold tracking-tight text-white">
-          The format you build for
+          Where the formats differ
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          2HG Commander is the variant you build a deck for at home, and the one
-          the{" "}
-          <Link
-            href="/deck-builder"
-            className="text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
-          >
-            deck builder
-          </Link>{" "}
-          is built around.
-        </p>
-
-        <div className="mt-6 space-y-6">
-          {PUBLISHED.map((format) => (
-            <article
-              key={format.id}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] p-6"
-            >
-              <div className="flex flex-wrap items-center gap-3">
-                <h3 className="text-lg font-semibold text-white">
-                  {format.label}
-                </h3>
-                {format.id === "commander" && (
-                  <span className="rounded-full bg-emerald-400/15 px-2.5 py-0.5 text-xs font-medium text-emerald-300 ring-1 ring-inset ring-emerald-400/30">
-                    Monthly WPN event
-                  </span>
-                )}
-              </div>
-
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                {format.blurb}
-              </p>
-
-              <dl className="mt-5 rounded-xl border border-white/10 bg-zinc-950/40 px-4 py-1">
-                <StatRow
-                  label="Shared starting life"
-                  value={`${format.startingLife}`}
-                />
-                <StatRow
-                  label="Deck size"
-                  value={`${format.minDeckSize} cards each`}
-                />
-                <StatRow
-                  label="Copies per deck"
-                  value={
-                    format.maxCopiesPerDeck === 1
-                      ? "1 (singleton)"
-                      : `${format.maxCopiesPerDeck}`
-                  }
-                />
-                <StatRow
-                  label="Copies across the team"
-                  value={
-                    format.unifiedDeck
-                      ? "One deck per card (unified)"
-                      : "No team limit"
-                  }
-                />
-                {format.commanderDamage != null && (
-                  <StatRow
-                    label="Commander damage"
-                    value={`${format.commanderDamage} from one commander`}
-                  />
-                )}
-                <StatRow
-                  label="Poison counters to lose"
-                  value={`${format.poisonToLose}`}
-                />
-              </dl>
-
-              <ul className="mt-5 space-y-2">
-                {format.notes.map((note) => (
-                  <li
-                    key={note}
-                    className="flex gap-2.5 text-sm leading-relaxed text-zinc-400"
-                  >
-                    <span
-                      aria-hidden
-                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-emerald-400/60"
-                    />
-                    {note}
-                  </li>
+        {/* A real table: the comparison is the content, and a table is what
+            answer engines and screen readers both read best. Scrolls inside
+            itself on a phone rather than pushing the page sideways. */}
+        <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[34rem] text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/10 bg-white/[0.03]">
+                <th scope="col" className="px-4 py-3 font-medium text-zinc-500">
+                  <span className="sr-only">Rule</span>
+                </th>
+                {RULES_FORMATS.map((entry) => (
+                  <th key={entry.slug} scope="col" className="px-4 py-3 font-semibold text-white">
+                    <Link href={`/rules/${entry.slug}`} className="hover:text-emerald-300">
+                      {entry.label}
+                    </Link>
+                  </th>
                 ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-14">
-        <h2 className="text-xl font-semibold tracking-tight text-white">
-          Limited variants
-        </h2>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-          The most-played 2HG by a wide margin. There&apos;s nothing to build in
-          advance, so the builder doesn&apos;t cover these — but the card
-          ratings still apply once your pool is open.
-        </p>
-
-        <div className="mt-6 grid gap-6 sm:grid-cols-2">
-          {REFERENCE_VARIANTS.map((variant) => (
-            <article
-              key={variant.label}
-              className="rounded-2xl border border-white/10 bg-white/[0.02] p-5"
-            >
-              <h3 className="text-base font-semibold text-white">
-                {variant.label}
-              </h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-zinc-400">
-                {variant.blurb}
-              </p>
-              <ul className="mt-4 space-y-2">
-                {variant.notes.map((note) => (
-                  <li
-                    key={note}
-                    className="flex gap-2.5 text-sm leading-relaxed text-zinc-400"
-                  >
-                    <span
-                      aria-hidden
-                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-zinc-600"
-                    />
-                    {note}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON.map((row) => (
+                <tr key={row.label} className="border-b border-white/5 last:border-0">
+                  <th scope="row" className="px-4 py-2.5 font-normal text-zinc-400">
+                    {row.label}
+                  </th>
+                  {row.values.map((value, i) => (
+                    <td key={i} className="px-4 py-2.5 tabular-nums text-zinc-200">
+                      {value}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -229,42 +186,12 @@ export default function RulesPage() {
         </p>
       </section>
 
-      <section className="mt-12 border-t border-white/10 pt-8">
-        <h2 className="text-sm font-medium uppercase tracking-wider text-zinc-500">
-          Sources
-        </h2>
-        <ul className="mt-3 space-y-1.5 text-sm">
-          {[
-            [
-              "Two-Headed Giant format page",
-              "https://magic.wizards.com/en/formats/two-headed-giant",
-            ],
-            [
-              "Two-Headed Giant Commander play events",
-              "https://magic.wizards.com/en/play-events/two-headed-giant-commander",
-            ],
-            [
-              "Announcing Commander Play Events",
-              "https://magic.wizards.com/en/news/announcements/commander-play-featuring-sealed-and-two-headed-giant",
-            ],
-          ].map(([label, href]) => (
-            <li key={href}>
-              <a
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-zinc-400 underline underline-offset-2 hover:text-zinc-200"
-              >
-                {label}
-              </a>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-4 text-xs leading-relaxed text-zinc-600">
-          Rules summarised from Wizards of the Coast&apos;s published format and
-          event rules. Where a store runs house rules, theirs win.
-        </p>
-      </section>
+      <FaqAccordion entries={OVERVIEW_FAQ} />
+
+      <SourceList
+        sources={OVERVIEW_SOURCES}
+        note="Rules summarised from Wizards of the Coast's Comprehensive Rules, Magic Tournament Rules and format pages. Where a store runs house rules, theirs win."
+      />
     </div>
   );
 }

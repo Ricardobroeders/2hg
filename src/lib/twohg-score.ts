@@ -244,7 +244,7 @@ export const RULES: Rule[] = [
     id: "monarch",
     label: "Monarch / initiative",
     reason:
-      "In 2HG the monarch is held by a team, so the crown swings between two players and is much harder to steal back.",
+      "The monarch is still one player, not the team, and the other team can send both players' creatures at that one head in a single combined attack.",
     impact: "down",
     weight: 4,
     test: ({ has }) => has("monarch", "the initiative"),

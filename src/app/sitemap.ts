@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { CORPUS_UPDATED_AT, indexableCards } from "@/lib/corpus";
 import { indexableHubs } from "@/lib/lists";
+import { RULES_FORMATS } from "@/content/rules";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -32,6 +33,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // timestamp that moves without the content changing teaches Google to
     // ignore the field across the whole site.
     ...STATIC_PATHS.map((path) => ({ url: `${SITE_URL}${path}` })),
+
+    // Each 2HG variant's rules page. Authored, sourced and specific to one
+    // format, so all three clear the thin-content bar.
+    ...RULES_FORMATS.map((entry) => ({ url: `${SITE_URL}/rules/${entry.slug}` })),
 
     ...indexableHubs().map((hub) => ({
       url: `${SITE_URL}/lists/${hub.id}`,

@@ -88,9 +88,13 @@ export const FORMATS: Record<FormatId, FormatRules> = {
     blurb:
       "Each player brings their own legal 100-card Commander deck. The team shares 60 life. Teammates may run the same cards — the singleton rule applies to each deck, not to the team.",
     notes: [
-      "Each player's deck is an ordinary, individually legal Commander deck: 100 cards, singleton, colour identity enforced per deck.",
+      "Each player's deck is an ordinary, individually legal Commander deck: 100 cards, singleton, color identity enforced per deck.",
       "The team shares one 60-life total instead of the usual 40 per player.",
-      "A player still loses to 21 combat damage from a single commander.",
+      // Wizards' 2HG format page words this per team ("A team loses when they
+      // take 21 or more damage from a single commander"); CR 903.10a counts it
+      // per player and the CR has no 2HG Commander rule. We publish Wizards'
+      // event wording and say the CR doesn't settle it — see /rules/commander.
+      "Wizards' 2HG page: a team loses when it takes 21 or more damage from a single commander.",
       "A team loses at 15 poison counters, not 10.",
       "There is no unified deck rule. Both teammates may play the same card.",
     ],
@@ -127,58 +131,102 @@ export const FORMATS: Record<FormatId, FormatRules> = {
 export const DEFAULT_FORMAT: FormatId = "commander";
 
 /**
- * Variants we document but don't build decks for. Sealed is the most-played
- * 2HG by a wide margin, but the pool is opened at the event — there's nothing
- * to build at home, so it's reference material rather than a builder format.
+ * The Limited variants: documented on `/rules/sealed` and `/rules/draft`, but
+ * not builder formats — the pool is opened at the event, so there is nothing
+ * to build at home.
+ *
+ * Every number is sourced, because these pages exist to be more correct than
+ * the sites that rank today:
+ * - life 30 and poison 15: CR 103.4a, 810.4, 810.8d
+ * - 40-card minimum: MTR 7.1 (and CR 100.2b)
+ * - boosters per team: MTR 9.6 recommends 8 for Sealed and 6 for Draft
+ * - build time: MTR Appendix B
+ * - two picks per pack: MTR 9.7
  */
-export const REFERENCE_VARIANTS = [
-  {
-    label: "2HG Sealed",
-    blurb:
-      "The prerelease format. A team opens a shared pool and builds two decks from it together, collaborating so the decks cover different roles.",
-    notes: [
-      "Each deck is at least 40 cards, built from one shared pool.",
-      "From the Reality Fracture prerelease, a team receives one Prerelease Pack plus two Play Boosters.",
-      "The team shares one 30-life total.",
-      "Cards left over from the pool are shared — a card can only be in one deck at a time.",
-    ],
-  },
-  {
-    label: "2HG Draft",
-    blurb:
-      "Less common than sealed, but run at some stores. Teams draft and then build two decks from the combined pool.",
-    notes: [
-      "Each deck is at least 40 cards, built from the team's combined drafted pool.",
-      "The team shares one 30-life total.",
-    ],
-  },
-] as const;
+export type LimitedFormatId = "sealed" | "draft";
 
-/** Rules that are true in every 2HG variant. */
+export type LimitedRules = {
+  id: LimitedFormatId;
+  label: string;
+  startingLife: number;
+  poisonToLose: number;
+  /** Minimum size of each of the team's two decks. */
+  minDeckSize: number;
+  /** Boosters per team the MTR recommends. Stores may hand out more. */
+  boostersPerTeam: number;
+  /** Deck construction time the MTR recommends, in minutes. */
+  buildMinutes: number;
+};
+
+export const LIMITED_FORMATS: Record<LimitedFormatId, LimitedRules> = {
+  sealed: {
+    id: "sealed",
+    label: "2HG Sealed",
+    startingLife: 30,
+    poisonToLose: 15,
+    minDeckSize: 40,
+    boostersPerTeam: 8,
+    buildMinutes: 60,
+  },
+  draft: {
+    id: "draft",
+    label: "2HG Draft",
+    startingLife: 30,
+    poisonToLose: 15,
+    minDeckSize: 40,
+    boostersPerTeam: 6,
+    // MTR Appendix B gives Draft 40 minutes for construction and registration together.
+    buildMinutes: 40,
+  },
+};
+
+/** Cards a team takes from each pack in a 2HG draft, together (MTR 9.7). */
+export const DRAFT_PICKS_PER_PACK = 2;
+
+/**
+ * Rules that are true in every 2HG variant, each with the Comprehensive Rules
+ * number behind it. Rewritten 2026-10-21 against the CR effective 2026-09-25.
+ */
 export const SHARED_RULES = [
   {
     title: "One life total",
-    body: "Teammates share a single life total. Damage to either player comes off the same pool, and lifegain feeds it back. A team loses when that total hits 0.",
+    body: "Teammates share a single life total. Damage, life loss and lifegain happen to each player and land on the team's total, and the team loses when it hits 0.",
+    ref: "CR 810.9, 810.8c",
   },
   {
     title: "One turn",
-    body: "Teammates take their turns simultaneously as a team turn: one untap, one upkeep, one draw step each, one combat phase. Either player may cast spells whenever the team has priority.",
+    body: "The team takes its turn together. Each player draws in the team's draw step and may play a land, and either teammate can act whenever the team has priority.",
+    ref: "CR 805.4, 805.5",
   },
   {
     title: "The starting team doesn't draw",
-    body: "The team that goes first skips their first draw step — both players skip it, not just one.",
+    body: "The team that goes first skips the draw step of its first turn — both players skip it, not just one.",
+    ref: "CR 810.6",
   },
   {
-    title: "Two opponents, one target",
-    body: "'Each opponent' resolves against both members of the opposing team, but their life is one pool — so the printed number effectively doubles. This is the single biggest reason card values shift in 2HG.",
+    title: "Two opponents, one total",
+    body: "'Each opponent' resolves against both players on the other team, and both results come off one shared life total. A drain of two takes four.",
+    ref: "CR 810.9, 102.3",
   },
   {
-    title: "Range of influence is the team",
-    body: "You may target your teammate's permanents and your teammate themselves. Protection, untapping, and 'target player draws' effects can all be pointed at your partner.",
+    title: "Attacks pick a player",
+    body: "Each attacking creature attacks one specific opponent, planeswalker or battle. The defending team blocks as one, with creatures from either player.",
+    ref: "CR 805.10",
+  },
+  {
+    title: "One player loses, the team loses",
+    body: "If either player loses — drawing from an empty library, say — the whole team loses. A concession takes the team out too.",
+    ref: "CR 810.8a, 810.8b",
+  },
+  {
+    title: "Your teammate is a legal target",
+    body: "Spells and abilities can target your teammate and their permanents. Hands can be shown and plans discussed at any time, but you can't handle each other's cards.",
+    ref: "CR 810.5",
   },
   {
     title: "Poison is 15",
-    body: "A team loses at 15 poison counters rather than the usual 10, so infect and toxic clocks are slower than their raw numbers suggest.",
+    body: "Poison counters are shared by the team, and a team loses at 15 rather than the usual 10, so infect and toxic clocks are slower than their raw numbers suggest.",
+    ref: "CR 810.10, 810.8d",
   },
 ] as const;
 
