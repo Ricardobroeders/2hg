@@ -169,6 +169,7 @@ const content: RulesContent = {
     "two headed giant commander damage",
     "2hg commander night",
   ],
+  publishedAt: "2026-10-21",
   researchedAt: "2026-10-21",
 };
 

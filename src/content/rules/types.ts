@@ -50,8 +50,14 @@ export type RulesContent = {
   faq: readonly RulesFaq[];
   sources: readonly { label: string; href: string }[];
 
+  /** First publication, ISO date. Ships as `datePublished` in the Article markup. */
+  publishedAt: string;
+  /**
+   * ISO date the page was last checked against the rules documents. Ships as
+   * `dateModified`, so bump it only when the facts were actually re-checked.
+   */
+  researchedAt: string;
   /** Research bookkeeping — not rendered. */
   targetQuery: string;
   secondaryQueries: readonly string[];
-  researchedAt: string;
 };

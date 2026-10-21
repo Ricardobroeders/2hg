@@ -42,10 +42,14 @@ export const metadata: Metadata = {
     title: "Two-Headed Giant — the 2HG card database",
     description: DESCRIPTION,
   },
+  /**
+   * Card type only. A `title` or `description` here is inherited by every page
+   * that doesn't set its own `twitter` — which is every page — so X showed the
+   * home page's title on all of them. Without them, X falls back to each
+   * page's own Open Graph title, description and image.
+   */
   twitter: {
     card: "summary_large_image",
-    title: "Two-Headed Giant — the 2HG card database",
-    description: DESCRIPTION,
   },
 };
 

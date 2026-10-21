@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { RULES_FORMATS, rulesFormat } from "@/content/rules";
-import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { JsonLd, articleSchema, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { openGraphFor } from "@/lib/site";
 import { FaqAccordion, SourceList } from "@/components/FaqAccordion";
 import { RulesFacts, RulesSections } from "@/components/RulesBlocks";
 
@@ -25,11 +26,11 @@ export async function generateMetadata({
     title: entry.content.title,
     description: entry.content.description,
     alternates: { canonical: path },
-    openGraph: {
-      url: path,
+    openGraph: openGraphFor({
+      path,
       title: entry.content.title,
       description: entry.content.description,
-    },
+    }),
   };
 }
 
@@ -50,6 +51,16 @@ export default async function RulesFormatPage({
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <JsonLd
+        data={articleSchema({
+          path: `/rules/${entry.slug}`,
+          headline: content.heading,
+          description: content.description,
+          datePublished: content.publishedAt,
+          dateModified: content.researchedAt,
+          sources: content.sources,
+        })}
+      />
       <JsonLd data={faqSchema(content.faq)} />
       <JsonLd
         data={breadcrumbSchema([

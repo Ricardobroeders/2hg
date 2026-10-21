@@ -109,3 +109,58 @@ export function collectionSchema({
     },
   };
 }
+
+/**
+ * A reference article: the rules pages.
+ *
+ * Says what the page is, who publishes it, when it was last checked against
+ * the rules documents, and — through `citation` — which official sources back
+ * it. That last part is the point for answer engines: the Sources list on the
+ * page becomes machine-readable rather than a row of links.
+ *
+ * The author is the site, not a person, because no person wrote these as a
+ * byline. `dateModified` is the research date in the content file, so it only
+ * moves when someone actually re-checks the page.
+ */
+export function articleSchema({
+  path,
+  headline,
+  description,
+  datePublished,
+  dateModified,
+  sources,
+}: {
+  path: string;
+  headline: string;
+  description: string;
+  datePublished: string;
+  dateModified: string;
+  sources: readonly { label: string; href: string }[];
+}) {
+  const site = { "@type": "Organization", name: SITE_NAME, url: absoluteUrl("/") };
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline,
+    description,
+    url: absoluteUrl(path),
+    mainEntityOfPage: absoluteUrl(path),
+    image: absoluteUrl("/opengraph-image"),
+    datePublished,
+    dateModified,
+    inLanguage: "en",
+    author: site,
+    publisher: site,
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: absoluteUrl("/") },
+    about: {
+      "@type": "Thing",
+      name: "Two-Headed Giant",
+      description: "A team format for Magic: The Gathering in which two teams of two share a life total and a turn.",
+    },
+    citation: sources.map((source) => ({
+      "@type": "CreativeWork",
+      name: source.label,
+      url: source.href,
+    })),
+  };
+}

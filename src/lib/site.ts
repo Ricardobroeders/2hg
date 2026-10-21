@@ -64,3 +64,38 @@ export function absoluteUrl(path = "/"): string {
  * ever revoked both pages lose their stated way to reach us.
  */
 export const DISCORD_URL = "https://discord.gg/chdATWFckx";
+
+/**
+ * Open Graph for a page, with the site-wide fields restored.
+ *
+ * Next merges metadata shallowly: a page that sets `openGraph` replaces the
+ * layout's whole object, so the share image, `siteName`, `type` and `locale`
+ * silently vanished from every page that set its own title — which was every
+ * page but the home page. Build `openGraph` through this instead.
+ *
+ * The image defaults to the root `opengraph-image` route. Pass `images` only
+ * when a page has a better one of its own, like a card's art.
+ */
+export function openGraphFor({
+  path,
+  title,
+  description,
+  images,
+}: {
+  path: string;
+  title: string;
+  description: string;
+  images?: string[];
+}) {
+  return {
+    type: "website" as const,
+    siteName: SITE_NAME,
+    locale: "en",
+    url: path,
+    title,
+    description,
+    images: images ?? [
+      { url: "/opengraph-image", width: 1200, height: 630, alt: `${title} · ${SITE_NAME}` },
+    ],
+  };
+}

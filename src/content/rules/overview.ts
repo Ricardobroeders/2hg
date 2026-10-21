@@ -10,6 +10,9 @@ const COMMANDER_LIFE = FORMATS.commander.startingLife;
 const POISON = FORMATS.commander.poisonToLose;
 
 export const OVERVIEW = {
+  /** `/rules` has existed since launch; rebuilt as the overview on 2026-10-21. */
+  publishedAt: "2026-08-28",
+  researchedAt: "2026-10-21",
   title: "2HG rules for Commander, Sealed and Draft",
   description: `How Two-Headed Giant works: shared life and turns, ${STANDARD_LIFE} life in Sealed and Draft, ${COMMANDER_LIFE} in 2HG Commander, ${POISON} poison. Rules for every format.`,
   intro: [

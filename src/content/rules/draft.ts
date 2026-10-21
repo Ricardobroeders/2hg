@@ -138,6 +138,7 @@ const content: RulesContent = {
 
   targetQuery: "two headed giant draft rules",
   secondaryQueries: ["2hg draft", "how does two headed giant draft work", "2hg draft how many packs"],
+  publishedAt: "2026-10-21",
   researchedAt: "2026-10-21",
 };
 

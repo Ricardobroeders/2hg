@@ -3,14 +3,19 @@ import Link from "next/link";
 import { FORMATS, LIMITED_FORMATS, SHARED_RULES } from "@/lib/team";
 import { RULES_FORMATS } from "@/content/rules";
 import { OVERVIEW, OVERVIEW_FAQ, OVERVIEW_SOURCES } from "@/content/rules/overview";
-import { JsonLd, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { JsonLd, articleSchema, breadcrumbSchema, faqSchema } from "@/components/JsonLd";
+import { openGraphFor } from "@/lib/site";
 import { FaqAccordion, SourceList } from "@/components/FaqAccordion";
 
 export const metadata: Metadata = {
   title: OVERVIEW.title,
   description: OVERVIEW.description,
   alternates: { canonical: "/rules" },
-  openGraph: { url: "/rules" },
+  openGraph: openGraphFor({
+    path: "/rules",
+    title: OVERVIEW.title,
+    description: OVERVIEW.description,
+  }),
 };
 
 const commander = FORMATS.commander;
@@ -66,6 +71,16 @@ const CARD_STATS: Record<string, string> = {
 export default function RulesPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+      <JsonLd
+        data={articleSchema({
+          path: "/rules",
+          headline: "How Two-Headed Giant works",
+          description: OVERVIEW.description,
+          datePublished: OVERVIEW.publishedAt,
+          dateModified: OVERVIEW.researchedAt,
+          sources: OVERVIEW_SOURCES,
+        })}
+      />
       <JsonLd data={faqSchema(OVERVIEW_FAQ)} />
       <JsonLd data={breadcrumbSchema([{ name: "Rules", path: "/rules" }])} />
 

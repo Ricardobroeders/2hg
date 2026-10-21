@@ -132,6 +132,7 @@ const content: RulesContent = {
 
   targetQuery: "two headed giant sealed rules",
   secondaryQueries: ["2hg prerelease rules", "2hg sealed", "two headed giant prerelease how many packs"],
+  publishedAt: "2026-10-21",
   researchedAt: "2026-10-21",
 };
 
