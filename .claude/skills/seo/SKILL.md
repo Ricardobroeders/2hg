@@ -63,7 +63,7 @@ of which have already shipped wrong once:
 - **2HG Commander is 60 life.** 30 is the Constructed number. Derive from
   `FORMATS.commander.startingLife`, never retype it.
 - **There is no unified deck rule in 2HG Commander.** Teammates may both run the
-  same card. `FORMATS.commander.maxCombinedCopies` is `null` and says so.
+  same card. `FORMATS.commander.unifiedDeck` is `false` and says so.
 
 `src/lib/team.ts` is the single source of truth. Change the data, not the prose.
 

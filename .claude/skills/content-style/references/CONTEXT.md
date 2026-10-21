@@ -83,9 +83,11 @@ Each of these has been written wrong before, here or elsewhere:
 2. **There is no unified deck rule in 2HG Commander.** Each player brings their
    own individually-legal deck; teammates may both run the same card; the
    singleton rule applies per deck and never across the team.
-   `FORMATS.commander.maxCombinedCopies` is `null` and says so. The
-   four-copies-across-both-decks rule people remember belongs to 2HG
-   Constructed — where it is real, and where `maxCombinedCopies` is set.
+   `FORMATS.commander.unifiedDeck` is `false` and says so. The cross-deck
+   rule people remember belongs to 2HG Constructed, where it is real — and
+   where it is no longer "four copies combined" either. Since the MTR moved
+   2HG Constructed onto Unified Deck Construction (MTR 9.5 → 8.4), a card may
+   appear in only one teammate's deck at all.
 3. **Poison is not the usual number.** Read `FORMATS.commander.poisonToLose`.
 
 If a draft states a rules number, it must either interpolate from `FORMATS` or

@@ -23,7 +23,7 @@ Counts derived from `src/data/card-corpus.json` are real and citable.
 ### 2. Format-derived — read it from the code
 
 Rules numbers come from `src/lib/team.ts` and are interpolated, never retyped:
-`FORMATS.commander.startingLife`, `.minDeckSize`, `.maxCombinedCopies`,
+`FORMATS.commander.startingLife`, `.minDeckSize`, `.unifiedDeck`,
 `.commanderDamage`, `.poisonToLose`, plus `SHARED_RULES`.
 
 Retyping is how this site has already shipped a wrong life total once. If you

@@ -109,9 +109,8 @@ ones that told them something unwelcome. So:
 - **Name the limit in the same breath as the claim.** The existing copy does
   this constantly: *"provided your own teammate can play through them"*, *"but
   the card ratings still apply once your pool is open"*.
-- **Correct a common wrong belief where one exists.** *"The
-  four-copies-across-both-decks rule people remember is from a different format
-  entirely."*
+- **Correct a common wrong belief where one exists.** *"The cross-deck rule
+  people remember belongs to 2HG Constructed, a different format entirely."*
 
 ## Hedges
 

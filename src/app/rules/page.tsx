@@ -137,9 +137,9 @@ export default function RulesPage() {
                 <StatRow
                   label="Copies across the team"
                   value={
-                    format.maxCombinedCopies == null
-                      ? "No team limit"
-                      : `${format.maxCombinedCopies} combined`
+                    format.unifiedDeck
+                      ? "One deck per card (unified)"
+                      : "No team limit"
                   }
                 />
                 {format.commanderDamage != null && (
@@ -222,10 +222,10 @@ export default function RulesPage() {
           2HG Commander has <strong className="text-white">no unified deck
           rule</strong>. Wizards&apos; event rules say you may bring any legal
           Commander deck, so you and your teammate can both run Sol Ring — the
-          singleton rule applies to each deck, not to the team. The
-          four-copies-across-both-decks rule people remember is from a different
-          format entirely, and doesn&apos;t apply to anything you&apos;ll play
-          at a Commander Night.
+          singleton rule applies to each deck, not to the team. The cross-deck
+          rule people remember belongs to 2HG Constructed, a different format
+          entirely, and doesn&apos;t apply to anything you&apos;ll play at a
+          Commander Night.
         </p>
       </section>
 

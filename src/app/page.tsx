@@ -119,7 +119,7 @@ export default async function HomePage() {
                 {
                   // The stat this replaced asserted a unified deck rule for 2HG
                   // Commander. There isn't one — `FORMATS.commander` says so
-                  // (`maxCombinedCopies: null`) and /rules has a whole section
+                  // (`unifiedDeck: false`) and /rules has a whole section
                   // debunking it. Contradicting our own rules page on the home
                   // page is the last thing a site claiming 2HG authority can do.
                   stat: "No shared limit",

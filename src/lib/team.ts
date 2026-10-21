@@ -48,10 +48,11 @@ export type FormatRules = {
   /** Copies of a single card allowed within one player's deck. */
   maxCopiesPerDeck: number;
   /**
-   * Copies allowed across BOTH decks combined, or `null` when teammates build
-   * independently and Unified Deck Construction does not apply.
+   * Unified Deck Construction (MTR 8.4): apart from basic lands, a card may
+   * appear in only one deck on the team. `false` when teammates build
+   * independently and may both run the same card.
    */
-  maxCombinedCopies: number | null;
+  unifiedDeck: boolean;
   /** Minimum size of each individual deck. */
   minDeckSize: number;
   /** Scryfall legality key to check each card against. */
@@ -68,9 +69,9 @@ export type FormatRules = {
  * Event running monthly at WPN stores, and it's the only 2HG variant where
  * people build decks at home.
  *
- * Note there is deliberately NO combined copy limit. WotC's event rules say
- * you may bring any legal Commander deck, so teammates may run the same card.
- * The singleton rule applies per deck, never across the team.
+ * Note there is deliberately NO unified deck rule. WotC's event rules say you
+ * may bring any legal Commander deck, so teammates may run the same card. The
+ * singleton rule applies per deck, never across the team.
  */
 export const FORMATS: Record<FormatId, FormatRules> = {
   commander: {
@@ -80,7 +81,7 @@ export const FORMATS: Record<FormatId, FormatRules> = {
     poisonToLose: 15,
     commanderDamage: 21,
     maxCopiesPerDeck: 1,
-    maxCombinedCopies: null,
+    unifiedDeck: false,
     minDeckSize: 100,
     legalityKey: "commander",
     official: true,
@@ -101,17 +102,23 @@ export const FORMATS: Record<FormatId, FormatRules> = {
     poisonToLose: 15,
     commanderDamage: null,
     maxCopiesPerDeck: 4,
-    maxCombinedCopies: 4,
+    unifiedDeck: true,
     minDeckSize: 60,
     legalityKey: "standard",
     official: true,
+    /**
+     * Corrected 2026-10-21. This used to say "four copies across both decks
+     * combined", which is the rule before the MTR moved 2HG Constructed onto
+     * Unified Deck Construction. MTR 9.5 → 8.4 (Feb 2026), and the judges'
+     * annotation to 8.4 flags the change from the old "four of" rule.
+     */
     blurb:
-      "60-card decks and a shared 30 life. This is the variant with Unified Deck Construction: four copies of a card across both decks combined, not four each.",
+      "60-card decks and a shared 30 life. This is the variant with Unified Deck Construction: apart from basic lands, a card can appear in only one teammate's deck.",
     notes: [
       "Each deck is at least 60 cards; the team shares one 30-life total.",
-      "Unified Deck Construction: the team's combined decks may not contain more than four of any individual card, by English name.",
-      "Cards with the basic supertype, and cards whose text sets their own limit, are exempt.",
-      "A card restricted in the format is limited to one copy per team.",
+      "Unified Deck Construction: no two decks on a team may contain the same card, by English name. Basic lands are exempt.",
+      "A card that overrides the copy limit, like Relentless Rats, may do so in only one deck on the team.",
+      "No sideboards, and Erayo, Soratami Ascendant is banned in every 2HG Constructed format.",
       "A team loses at 15 poison counters, not 10.",
     ],
   },
@@ -265,18 +272,18 @@ export function validateTeam(
       }
     }
 
-    // Only Constructed pools copies across the team. In Commander each deck is
-    // built independently, so a shared card is fine.
-    if (rules.maxCombinedCopies != null) {
-      const teamLimit = copyLimitFor(card, rules.maxCombinedCopies);
-      if (total > teamLimit) {
-        violations.push({
-          kind: "combined-copies",
-          cardName: name,
-          message: `${total} copies of ${name} across the team (Deck A: ${row.a}, Deck B: ${row.b}). Unified Deck Construction allows ${teamLimit}.`,
-          decks,
-        });
-      }
+    // Only Constructed unifies the team's decks. In Commander each deck is
+    // built independently, so a shared card is fine. Under Unified Deck
+    // Construction only the basic supertype is exempt — a Relentless Rats
+    // overrides the copy limit for one deck on the team, never both.
+    const basic = card.type_line.toLowerCase().includes("basic");
+    if (rules.unifiedDeck && row.a > 0 && row.b > 0 && !basic) {
+      violations.push({
+        kind: "combined-copies",
+        cardName: name,
+        message: `${name} is in both decks (Deck A: ${row.a}, Deck B: ${row.b}). Unified Deck Construction lets only one deck on a team use a card.`,
+        decks,
+      });
     }
 
     const legality = card.legalities[rules.legalityKey];
