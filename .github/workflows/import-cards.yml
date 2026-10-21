@@ -34,6 +34,7 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
-          # Where /api/revalidate lives. Change with the custom domain — it is
-          # step 6 of the checklist in CLAUDE.md.
-          SITE_URL: https://2hg-ricardo-broeders-projects.vercel.app
+          # Where /api/revalidate lives. Must be the primary domain: the
+          # vercel.app aliases redirect, and a redirected POST never reaches
+          # the route, so ban updates would stop refreshing card pages.
+          SITE_URL: https://2hg.dev
