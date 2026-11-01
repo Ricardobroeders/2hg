@@ -8,6 +8,7 @@ import { toSlug } from "@/lib/slug";
 import { BulkImport } from "./BulkImport";
 import { CardLink } from "./CardLink";
 import { CommanderPicker } from "./CommanderPicker";
+import { DeckNotes } from "./DeckNotes";
 import { QuickAdd } from "./QuickAdd";
 import { SaveDeck } from "./SaveDeck";
 
@@ -55,6 +56,8 @@ export function DeckColumn({ slot }: { slot: DeckSlot }) {
             {count}/{rules.minDeckSize}
           </span>
         </div>
+        <DeckNotes slot={slot} />
+
         {/* Commander sits above the card search: it defines the deck's colour
             identity, so it's the first decision, not another card added. */}
         <div className="mt-3">

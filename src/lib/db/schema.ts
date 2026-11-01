@@ -98,6 +98,10 @@ export const decks = pgTable(
       .array()
       .notNull()
       .default(sql`ARRAY[]::text[]`),
+    /** Plain text; the share page's meta description when present. */
+    description: text("description").notNull().default(""),
+    /** Markdown, written in the builder's editor and rendered on share pages. */
+    notes: text("notes").notNull().default(""),
   },
   // A team has exactly one deck per slot.
   (t) => [uniqueIndex("decks_team_slot_idx").on(t.teamId, t.slot)],

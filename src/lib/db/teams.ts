@@ -13,6 +13,8 @@ import { deckCards, decks, teams } from "./schema";
 import {
   DEFAULT_FORMAT,
   FORMATS,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_NOTES_LENGTH,
   emptyDeck,
   type DeckSlot,
   type FormatId,
@@ -81,6 +83,15 @@ function cardRowsFor(
   return rows;
 }
 
+/**
+ * Clamp free text from the client. Notes arrive from anyone holding a share
+ * link's edit token — or nobody at all, on a first save — so the bound is
+ * enforced here, not trusted from the editor's `maxLength`.
+ */
+function clampText(value: unknown, max: number): string {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
 function deckRowsFor(
   team: TeamPairing,
   teamId: string,
@@ -93,6 +104,13 @@ function deckRowsFor(
     slot,
     name: team[slot].name.slice(0, 120) || `Deck ${slot.toUpperCase()}`,
     commanders: team[slot].commanders ?? [],
+    // Collapsed to one line: it's a meta description, and a pasted newline
+    // would otherwise survive into the search snippet.
+    description: clampText(
+      team[slot].description?.replace(/\s+/g, " "),
+      MAX_DESCRIPTION_LENGTH,
+    ),
+    notes: clampText(team[slot].notes, MAX_NOTES_LENGTH),
   }));
 }
 
@@ -159,6 +177,8 @@ export async function getTeamBySlug(slug: string): Promise<StoredTeam | null> {
       deckSlot: decks.slot,
       deckName: decks.name,
       commanders: decks.commanders,
+      deckDescription: decks.description,
+      deckNotes: decks.notes,
       cardName: deckCards.cardName,
       quantity: deckCards.quantity,
     })
@@ -183,6 +203,8 @@ export async function getTeamBySlug(slug: string): Promise<StoredTeam | null> {
     const deck = pairing[r.deckSlot];
     deck.name = r.deckName ?? deck.name;
     deck.commanders = r.commanders ?? [];
+    deck.description = r.deckDescription ?? "";
+    deck.notes = r.deckNotes ?? "";
     // leftJoin yields one null-card row for a deck with no cards.
     if (r.cardName) {
       deck.entries.push({ name: r.cardName, quantity: r.quantity ?? 1 });

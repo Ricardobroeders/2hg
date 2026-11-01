@@ -24,7 +24,20 @@ export type Deck = {
    * records which of them lead the deck.
    */
   commanders: string[];
+  /**
+   * One or two plain sentences: what the deck does. Plain text rather than
+   * markdown because it doubles as the share page's meta description, and a
+   * search snippet can't render formatting.
+   */
+  description: string;
+  /** The deck's primer — game plan, mulligans, how it leans on its partner. Markdown. */
+  notes: string;
 };
+
+/** Long enough for two sentences, short enough to survive as a search snippet. */
+export const MAX_DESCRIPTION_LENGTH = 300;
+/** A primer, not a novel — and a bound on what one anonymous POST can store. */
+export const MAX_NOTES_LENGTH = 20_000;
 
 export type TeamPairing = {
   id: string;
@@ -368,7 +381,7 @@ export function validateTeam(
 }
 
 export function emptyDeck(name: string): Deck {
-  return { name, entries: [], commanders: [] };
+  return { name, entries: [], commanders: [], description: "", notes: "" };
 }
 
 export function emptyTeam(): TeamPairing {
@@ -379,6 +392,23 @@ export function emptyTeam(): TeamPairing {
     a: emptyDeck("Deck A"),
     b: emptyDeck("Deck B"),
   };
+}
+
+/**
+ * The decks' own descriptions as one meta description, or null when nobody
+ * wrote one. Each is capped at save, but a pairing joins two, so the result is
+ * cropped again — at a word, since a search snippet ending mid-word reads as
+ * broken.
+ */
+export function writtenDescription(decks: Deck[]): string | null {
+  const text = decks
+    .map((d) => d.description.trim())
+    .filter(Boolean)
+    .join(" ");
+  if (!text) return null;
+  if (text.length <= MAX_DESCRIPTION_LENGTH) return text;
+  const cut = text.slice(0, MAX_DESCRIPTION_LENGTH - 1);
+  return `${cut.slice(0, cut.lastIndexOf(" ")) || cut}…`;
 }
 
 /** Flatten both decks into the "4 Card Name" lines a cart importer expects. */

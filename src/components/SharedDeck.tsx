@@ -3,6 +3,7 @@ import type { Deck, DeckSlot } from "@/lib/team";
 import { scoreCard, tierColor } from "@/lib/twohg-score";
 import { toSlug } from "@/lib/slug";
 import { CardLink } from "./CardLink";
+import { DeckNotesView } from "./DeckNotesView";
 
 /**
  * Read-only deck view for a shared pairing.
@@ -67,7 +68,21 @@ export function SharedDeck({
             })}
           </p>
         )}
+
+        {deck.description && (
+          <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+            {deck.description}
+          </p>
+        )}
       </header>
+
+      {/* Above the list, not below it: a 100-card list would bury the one part
+          of the page its author actually wrote. */}
+      {deck.notes.trim() && (
+        <div className="border-b border-white/10 p-4">
+          <DeckNotesView markdown={deck.notes} />
+        </div>
+      )}
 
       <ul className="divide-y divide-white/5">
         {entries.map((entry) => {

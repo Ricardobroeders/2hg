@@ -5,7 +5,8 @@ import { DatabaseNotConfiguredError } from "@/lib/db";
 import { getTeamBySlug, recordView } from "@/lib/db/teams";
 import { hydrateDecklist } from "@/lib/cards";
 import { isCrawler } from "@/lib/crawler";
-import { FORMATS, validateTeam } from "@/lib/team";
+import { openGraphFor } from "@/lib/site";
+import { FORMATS, writtenDescription, validateTeam } from "@/lib/team";
 import { scoreCard } from "@/lib/twohg-score";
 import { AdoptTeam } from "@/components/AdoptTeam";
 import { PairingCommanders } from "@/components/PairingCommanders";
@@ -37,14 +38,21 @@ export async function generateMetadata(
   const { team } = stored;
   const commanders = [...team.a.commanders, ...team.b.commanders];
 
+  // What the author wrote beats anything we can say about their deck.
+  const description =
+    writtenDescription([team.a, team.b]) ??
+    (commanders.length
+      ? `A ${FORMATS[team.format].label} pairing: ${commanders.join(" and ")}.`
+      : `A ${FORMATS[team.format].label} team pairing — two decks built to play together.`);
+
   const canonical = `/t/${slug}`;
   return {
     title: team.name,
-    description: commanders.length
-      ? `A ${FORMATS[team.format].label} pairing: ${commanders.join(" and ")}.`
-      : `A ${FORMATS[team.format].label} team pairing — two decks built to play together.`,
+    description,
     alternates: { canonical },
-    openGraph: { url: canonical },
+    // The preview a teammate sees in chat is the deck's own description,
+    // when its author wrote one. X reads these tags too.
+    openGraph: openGraphFor({ path: canonical, title: team.name, description }),
   };
 }
 

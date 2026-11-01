@@ -94,6 +94,8 @@ function normalizeTeam(raw: Partial<TeamPairing> | null): TeamPairing {
     name: typeof d?.name === "string" ? d.name : fallback,
     entries: Array.isArray(d?.entries) ? d.entries : [],
     commanders: Array.isArray(d?.commanders) ? d.commanders : [],
+    description: typeof d?.description === "string" ? d.description : "",
+    notes: typeof d?.notes === "string" ? d.notes : "",
   });
 
   return {
@@ -206,6 +208,11 @@ type TeamContextValue = {
   setQuantity: (name: string, slot: DeckSlot, quantity: number) => void;
   removeCard: (name: string, slot: DeckSlot) => void;
   renameDeck: (slot: DeckSlot, name: string) => void;
+  /** Update a deck's description and/or notes. */
+  setDeckText: (
+    slot: DeckSlot,
+    text: Partial<Pick<Deck, "description" | "notes">>,
+  ) => void;
   /**
    * Set (or clear, with null) a deck's commander. Renames the deck to match
    * unless the name has been edited by hand — see the implementation.
@@ -367,6 +374,8 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
           team: {
             ...s.team,
             [slot]: {
+              // A new list replaces the cards, not the primer written about them.
+              ...deck,
               name: incoming.name?.trim() || deck.name,
               entries: [...merged.entries()].map(([name, quantity]) => ({
                 name,
@@ -387,6 +396,13 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
   const renameDeck = useCallback((slot: DeckSlot, name: string) => {
     updateTeam((t) => ({ ...t, [slot]: { ...t[slot], name } }));
   }, []);
+
+  const setDeckText = useCallback(
+    (slot: DeckSlot, text: Partial<Pick<Deck, "description" | "notes">>) => {
+      updateTeam((t) => ({ ...t, [slot]: { ...t[slot], ...text } }));
+    },
+    [],
+  );
 
   const setCommander = useCallback(
     (slot: DeckSlot, card: ScryfallCard | null) => {
@@ -439,7 +455,9 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
         for (const card of incoming) nextCards[card.name] = card;
         return {
           ...s,
-          team: next,
+          // Normalised like a localStorage read: a pairing saved before decks
+          // had notes comes back without them, and the editor expects strings.
+          team: normalizeTeam(next),
           cards: nextCards,
           unresolved: s.unresolved.filter((n) => !(n in nextCards)),
           // Default is no refs at all: adopting someone else's pairing gives
@@ -491,6 +509,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      setDeckText,
       setCommander,
       importDeck,
       replaceTeam,
@@ -512,6 +531,7 @@ export function TeamProvider({ children }: { children: React.ReactNode }) {
       setQuantity,
       removeCard,
       renameDeck,
+      setDeckText,
       setCommander,
       importDeck,
       replaceTeam,

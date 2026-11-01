@@ -75,3 +75,62 @@ details[open]::details-content {
     transition: none;
   }
 }
+
+/*
+ * Deck notes — the markdown primer on share pages and the editor that writes
+ * it in the builder. One stylesheet for both, so what someone types is what a
+ * teammate reads. There's no typography plugin on this site; these few
+ * elements are everything the editor can produce.
+ *
+ * Every heading level looks the same on purpose: the share page renders them
+ * all as <h3> beneath the deck's own <h2>, so a second visual tier would only
+ * exist in the editor.
+ */
+.notes-prose {
+  @apply text-sm leading-relaxed text-zinc-300;
+}
+.notes-prose > * + * {
+  @apply mt-3;
+}
+.notes-prose :is(h1, h2, h3, h4, h5, h6) {
+  @apply mt-5 text-sm font-semibold text-white first:mt-0;
+}
+.notes-prose :is(ul, ol) {
+  @apply space-y-1 pl-5;
+}
+.notes-prose ul {
+  @apply list-disc marker:text-zinc-600;
+}
+.notes-prose ol {
+  @apply list-decimal marker:text-zinc-500;
+}
+.notes-prose li > :is(ul, ol) {
+  @apply mt-1;
+}
+.notes-prose blockquote {
+  @apply border-l-2 border-emerald-400/40 pl-3 text-zinc-400;
+}
+.notes-prose a {
+  @apply text-emerald-400 underline decoration-emerald-400/30 underline-offset-2 hover:text-emerald-300;
+}
+.notes-prose strong {
+  @apply font-semibold text-white;
+}
+.notes-prose code {
+  @apply rounded bg-white/10 px-1 py-0.5 font-mono text-[0.8125rem] text-zinc-200;
+}
+.notes-prose pre {
+  @apply overflow-x-auto rounded-lg bg-white/5 p-3;
+}
+.notes-prose pre code {
+  @apply bg-transparent p-0;
+}
+.notes-prose hr {
+  @apply border-white/10;
+}
+
+/* Tiptap's empty-document placeholder. */
+.notes-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-zinc-600;
+}
